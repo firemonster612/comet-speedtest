@@ -1,0 +1,114 @@
+body {
+  margin: 0;
+}
+
+/*
+ * Section-switch entrance. A short, eased fade-and-rise on the active config
+ * deck so changing sections reads as a deliberate state change, not a jump.
+ * The global prefers-reduced-motion rule in the UI package collapses this to an
+ * instant swap.
+ */
+.ls-panel-enter {
+  animation: ls-panel-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes ls-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 1024px) {
+  .ls-config-slot {
+    min-height: 0;
+    position: sticky;
+    top: 1.25rem;
+    z-index: 10;
+  }
+
+  .ls-config-bench {
+    max-height: calc(100vh - 2.5rem);
+    max-width: calc(100vw - 32rem);
+    min-height: 100%;
+    position: absolute;
+    width: 4.25rem;
+    transition: width 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 20;
+  }
+
+  .ls-config-slot:hover .ls-config-bench,
+  .ls-config-slot:focus-within .ls-config-bench,
+  body:has([data-slot="select-content"][data-open]) .ls-config-bench {
+    width: 48rem;
+  }
+
+  .ls-config-nav {
+    border-right-color: transparent;
+    min-height: 100%;
+    transition: border-color 140ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .ls-config-slot:hover .ls-config-nav,
+  .ls-config-slot:focus-within .ls-config-nav,
+  body:has([data-slot="select-content"][data-open]) .ls-config-nav {
+    border-right-color: var(--border);
+  }
+
+  .ls-config-trigger svg {
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .ls-config-trigger:hover svg,
+  .ls-config-trigger:focus-visible svg,
+  .ls-config-trigger[data-active] svg {
+    transform: scale(1.06);
+  }
+
+  .ls-config-label {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  .ls-config-content {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden auto;
+    pointer-events: none;
+    transform: translateX(-0.5rem);
+    transition:
+      opacity 140ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    visibility: hidden;
+  }
+
+  .ls-config-slot:hover .ls-config-content,
+  .ls-config-slot:focus-within .ls-config-content,
+  body:has([data-slot="select-content"][data-open]) .ls-config-content {
+    max-height: calc(100vh - 2.5rem);
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-config-bench,
+  .ls-config-content,
+  .ls-config-trigger svg {
+    transition-duration: 0.01ms;
+  }
+}

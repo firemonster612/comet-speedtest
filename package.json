@@ -1,0 +1,45 @@
+{
+  "name": "lightspeed",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @lightspeed/playground dev",
+    "dev:prod": "pnpm --filter @lightspeed/production dev",
+    "dev:playground": "pnpm --filter @lightspeed/playground dev",
+    "build": "pnpm -r build",
+    "lint": "oxlint 'apps/*/src' 'apps/*/vite.config.ts' 'apps/*/vitest.config.ts' 'packages/*/src' 'packages/*/vitest.config.ts' 'tests/browser' playwright.config.ts oxlint.config.ts --ignore-pattern '**/dist/**' --ignore-pattern '**/node_modules/**'",
+    "lint:fix": "oxlint --fix 'apps/*/src' 'apps/*/vite.config.ts' 'apps/*/vitest.config.ts' 'packages/*/src' 'packages/*/vitest.config.ts' 'tests/browser' playwright.config.ts oxlint.config.ts --ignore-pattern '**/dist/**' --ignore-pattern '**/node_modules/**'",
+    "typecheck": "pnpm -r typecheck && tsc -p tsconfig.browser.json --noEmit",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "test": "pnpm -r test",
+    "test:browser": "env -u FORCE_COLOR -u NO_COLOR playwright test",
+    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:browser"
+  },
+  "dependencies": {
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
+    "jsdom": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "tailwind-merge": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "packageManager": "pnpm@11.8.0"
+}

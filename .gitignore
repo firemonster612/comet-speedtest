@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.vite/
+*.tsbuildinfo
+
+apps/*/dist/
+packages/*/dist/
+.playwright-mcp/
+
+# impeccable live-mode runtime (server journals, session state); design.json is kept
+**/.impeccable/live/

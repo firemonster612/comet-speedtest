@@ -1,0 +1,628 @@
+import {
+  normalizeConfig,
+  normalizeTestSelection,
+  type NormalizedSpeedTestConfig,
+  type NormalizedTestSelectionConfig,
+} from "@lightspeed/config";
+
+import { probeReachability, runIdleLatency } from "../latency/latencyProbe";
+import { gradeBufferbloat } from "../results/bufferbloat";
+import type {
+  CapabilityReport,
+  PartialResult,
+  RunOutcome,
+  SpeedTestConfig,
+  SpeedTestDiagnostics,
+  SpeedTestEngine as SpeedTestEngineInterface,
+  SpeedTestError,
+  SpeedTestEvent,
+  SpeedTestEventHandler,
+  SpeedTestPhase,
+  SpeedTestResult,
+  SpeedTestRunOptions,
+  SpeedTestState,
+  ThroughputPhase,
+  Unsubscribe,
+  LatencyResult,
+} from "../results/resultTypes";
+import { detectCapabilities } from "../transport/capabilities";
+import { resolveTransports } from "../transport/registry";
+import { initialState, makeRunId, toSpeedTestError } from "./lifecycle";
+import {
+  PartialThroughputPhaseError,
+  type DeterministicPhaseAdapter,
+  SyntheticMeasurementAdapter,
+  type ThroughputPhaseResult,
+  runWorkerPhase,
+} from "./phases";
+
+export interface SpeedTestEngineOptions {
+  baseUrl?: string;
+  capabilities?: CapabilityReport;
+  measurementAdapter?: DeterministicPhaseAdapter;
+}
+
+export class SpeedTestEngine implements SpeedTestEngineInterface {
+  private readonly handlers = new Map<
+    SpeedTestEvent["type"],
+    Set<(event: SpeedTestEvent) => void>
+  >();
+  private readonly config: NormalizedSpeedTestConfig;
+  private readonly adapter: DeterministicPhaseAdapter | undefined;
+  private state = initialState();
+  private activeController: AbortController | null = null;
+
+  constructor(
+    config: SpeedTestConfig,
+    private readonly options: SpeedTestEngineOptions = {},
+  ) {
+    this.config = isNormalized(config)
+      ? config
+      : normalizeConfig(config, {
+          baseUrl:
+            options.baseUrl ??
+            (typeof location === "undefined" ? "http://localhost/" : location.href),
+        });
+    this.adapter = options.measurementAdapter;
+  }
+
+  getConfig(): NormalizedSpeedTestConfig {
+    return this.config;
+  }
+
+  async run(options: SpeedTestRunOptions = {}): Promise<RunOutcome> {
+    if (this.state.status === "running") {
+      // Misuse, not a measurement failure — the one path that still throws.
+      throw {
+        code: "aborted",
+        message: "A speed test run is already active.",
+        recoverable: true,
+      } satisfies SpeedTestError;
+    }
+
+    let selection: NormalizedTestSelectionConfig;
+    try {
+      selection = resolveRunSelection(this.config.test.selection, options);
+    } catch (error) {
+      return this.failSelection(error);
+    }
+    const selectedThroughputPhases = selection.phases.filter(
+      (phase): phase is ThroughputPhase => phase === "download" || phase === "upload",
+    );
+    const runId = makeRunId();
+    const startedAt = new Date().toISOString();
+    const controller = new AbortController();
+    this.activeController = controller;
+    this.state = {
+      ...initialState(),
+      status: "running",
+      runId,
+      startedAt,
+    };
+
+    const diagnostics: SpeedTestDiagnostics = {
+      userAgent: typeof navigator === "undefined" ? "unknown" : navigator.userAgent,
+      testSelection: selection,
+      requestedTransports: {
+        download: selectedThroughputPhases.includes("download")
+          ? this.config.test.download.transport
+          : null,
+        upload: selectedThroughputPhases.includes("upload")
+          ? this.config.test.upload.transport
+          : null,
+      },
+      actualTransports: {
+        download: null,
+        upload: null,
+      },
+      measurementBasis: {
+        download: null,
+        upload: null,
+      },
+      fallbackReasons: [],
+      workersRequested: {
+        download: selectedThroughputPhases.includes("download")
+          ? this.config.test.download.workers
+          : 0,
+        upload: selectedThroughputPhases.includes("upload")
+          ? this.config.test.upload.workers
+          : 0,
+      },
+      workersStarted: {
+        download: 0,
+        upload: 0,
+      },
+      capabilityReport: this.options.capabilities ?? detectCapabilities(),
+      configSource: this.config.diagnostics.source,
+      errors: [],
+    };
+
+    let idleResult: LatencyResult | null = null;
+    let downloadResult: Awaited<ReturnType<typeof this.runThroughput>> | null = null;
+    let uploadResult: Awaited<ReturnType<typeof this.runThroughput>> | null = null;
+
+    try {
+      const transports = resolveTransports(this.config, diagnostics.capabilityReport, {
+        phases: selectedThroughputPhases,
+      });
+      diagnostics.requestedTransports = transports.requested;
+      diagnostics.actualTransports = transports.actual;
+      diagnostics.measurementBasis = measurementBasisFor(transports.actual);
+      diagnostics.fallbackReasons = transports.fallbackReasons;
+
+      this.emit({ type: "start", runId, config: this.config });
+
+      // Reachability gate. A fast probe of each target the run will use fails the
+      // run immediately with a clear message when a target can't be reached at all
+      // — instead of every phase silently producing zero-throughput windows and
+      // timeout-as-latency. Opt-out via `test.latency.reachabilityCheck`. Skipped
+      // under the synthetic/injected adapter (offline tests) so only real network
+      // runs pay for it.
+      if (
+        this.config.test.latency.reachabilityCheck &&
+        !this.adapter &&
+        !this.shouldUseSyntheticAdapter()
+      ) {
+        await this.assertTargetReachable(selection, controller.signal);
+      }
+
+      if (selection.phases.includes("idle-latency")) {
+        this.enterPhase("idle-latency");
+        const idle = await runIdleLatency(
+          this.config.targets.latency,
+          this.config.test.latency,
+          (sample) => {
+            // A failed probe's "latency" is just the time until it errored or
+            // timed out — never surface that as a reading. The aggregate already
+            // drops !ok samples; keep the live tile honest too.
+            if (sample.ok) {
+              this.state = { ...this.state, latestLatencySample: sample };
+            }
+            this.emit({ type: "latency-sample", sample });
+          },
+          controller.signal,
+        );
+        idleResult = idle;
+        this.emit({ type: "phase-complete", phase: "idle-latency", result: idle });
+      }
+
+      if (selection.phases.includes("download")) {
+        const downloadTransport = transports.actual.download;
+        if (!downloadTransport) {
+          throw transportMissingError("download");
+        }
+        this.enterPhase("download");
+        const download = await this.runThroughput(
+          "download",
+          runId,
+          downloadTransport,
+          selection.loadedLatency.download,
+          controller.signal,
+        );
+        downloadResult = download;
+        diagnostics.workersStarted.download = download.workersStarted;
+        diagnostics.errors.push(...download.workerErrors);
+        this.emit({
+          type: "phase-complete",
+          phase: "download",
+          result: download.throughput,
+        });
+      }
+
+      if (selection.phases.includes("upload")) {
+        const uploadTransport = transports.actual.upload;
+        if (!uploadTransport) {
+          throw transportMissingError("upload");
+        }
+        this.enterPhase("upload");
+        const upload = await this.runUploadWithRuntimeFallback(
+          runId,
+          uploadTransport,
+          selection.loadedLatency.upload,
+          diagnostics,
+          controller.signal,
+        );
+        uploadResult = upload;
+        diagnostics.workersStarted.upload = upload.workersStarted;
+        diagnostics.errors.push(...upload.workerErrors);
+        this.emit({
+          type: "phase-complete",
+          phase: "upload",
+          result: upload.throughput,
+        });
+      }
+
+      this.enterPhase("finalize");
+      const latency = {
+        idle: idleResult,
+        underDownloadLoad: downloadResult?.loadedLatency ?? null,
+        underUploadLoad: uploadResult?.loadedLatency ?? null,
+      };
+      const result: SpeedTestResult = {
+        runId,
+        startedAt,
+        completedAt: new Date().toISOString(),
+        configHash: this.config.diagnostics.configHash,
+        download: downloadResult?.throughput ?? null,
+        upload: uploadResult?.throughput ?? null,
+        latency,
+        bufferbloat: gradeBufferbloat(latency),
+        diagnostics,
+      };
+
+      this.state = {
+        ...this.state,
+        status: "complete",
+        phase: null,
+        completedAt: result.completedAt,
+        result,
+      };
+      this.emit({ type: "result", result });
+      return { ok: true, result };
+    } catch (error) {
+      return this.failRun(error, {
+        aborted: controller.signal.aborted,
+        diagnostics,
+        runId,
+        startedAt,
+        idle: idleResult,
+        download: downloadResult,
+        upload: uploadResult,
+      });
+    } finally {
+      this.activeController = null;
+    }
+  }
+
+  /**
+   * Assemble a failure outcome: merge any partial phase result into diagnostics,
+   * build the typed {@link PartialResult} snapshot, record the run as
+   * errored/aborted, emit the `error` event, and return `{ ok: false }`. Kept off
+   * the `run()` happy path so that method reads as the phase narrative.
+   */
+  private failRun(
+    error: unknown,
+    ctx: {
+      aborted: boolean;
+      diagnostics: SpeedTestDiagnostics;
+      runId: string;
+      startedAt: string;
+      idle: LatencyResult | null;
+      download: ThroughputPhaseResult | null;
+      upload: ThroughputPhaseResult | null;
+    },
+  ): RunOutcome {
+    const { diagnostics } = ctx;
+    let download = ctx.download;
+    let upload = ctx.upload;
+
+    const fallbackError: SpeedTestError = {
+      code: ctx.aborted ? "aborted" : errorCodeForPhase(this.state.phase),
+      message: "Speed test failed.",
+      recoverable: true,
+    };
+    if (this.state.phase) {
+      fallbackError.phase = this.state.phase;
+    }
+    const partialPhase = readPartialPhaseResult(error);
+    if (partialPhase && this.state.phase === "download" && !download) {
+      download = partialPhase;
+      diagnostics.workersStarted.download = partialPhase.workersStarted;
+      diagnostics.errors.push(...partialPhase.workerErrors);
+    }
+    if (partialPhase && this.state.phase === "upload" && !upload) {
+      upload = partialPhase;
+      diagnostics.workersStarted.upload = partialPhase.workersStarted;
+      diagnostics.errors.push(...partialPhase.workerErrors);
+    }
+    const speedError = toSpeedTestError(error, fallbackError);
+    const completedAt = new Date().toISOString();
+    diagnostics.errors.push({
+      code: speedError.code,
+      message: speedError.message,
+      recoverable: speedError.recoverable,
+      ...(speedError.phase ? { phase: speedError.phase } : {}),
+    });
+    const partial: PartialResult = {
+      runId: ctx.runId,
+      startedAt: ctx.startedAt,
+      completedAt,
+      configHash: this.config.diagnostics.configHash,
+      completedPhases: {
+        idleLatency: ctx.idle,
+        download: download?.throughput ?? null,
+        underDownloadLoad: download?.loadedLatency ?? null,
+        upload: upload?.throughput ?? null,
+        underUploadLoad: upload?.loadedLatency ?? null,
+      },
+      diagnostics,
+    };
+    this.state = {
+      ...this.state,
+      status: ctx.aborted ? "aborted" : "error",
+      completedAt,
+      error: speedError,
+    };
+    this.emit({ type: "error", error: speedError });
+    return { ok: false, error: speedError, partial };
+  }
+
+  /**
+   * A run that never started because the per-call selection was invalid. There
+   * is no diagnostics snapshot or partial to report — just the typed error.
+   */
+  private failSelection(error: unknown): RunOutcome {
+    const speedError = toSpeedTestError(error, {
+      code: "config-invalid",
+      message: "Invalid run selection.",
+      recoverable: true,
+    });
+    this.state = {
+      ...initialState(),
+      status: "error",
+      completedAt: new Date().toISOString(),
+      error: speedError,
+    };
+    this.emit({ type: "error", error: speedError });
+    return { ok: false, error: speedError, partial: null };
+  }
+
+  stop(reason = "User stopped the run."): void {
+    if (this.activeController) {
+      this.activeController.abort(reason);
+    }
+  }
+
+  on<TEvent extends SpeedTestEvent["type"]>(
+    event: TEvent,
+    handler: SpeedTestEventHandler<TEvent>,
+  ): Unsubscribe {
+    const handlers = this.handlers.get(event) ?? new Set();
+    handlers.add(handler as (event: SpeedTestEvent) => void);
+    this.handlers.set(event, handlers);
+    return () => handlers.delete(handler as (event: SpeedTestEvent) => void);
+  }
+
+  getState(): SpeedTestState {
+    return structuredCloneSafe(this.state);
+  }
+
+  private async runThroughput(
+    phase: "download" | "upload",
+    runId: string,
+    uploadTransport: "fetch-stream" | "xhr-chunked",
+    loadedLatency: boolean,
+    signal: AbortSignal,
+  ) {
+    const adapter =
+      this.adapter ??
+      (this.shouldUseSyntheticAdapter() ? new SyntheticMeasurementAdapter() : null);
+    const emit = {
+      sample: (sample: Parameters<typeof this.emitSample>[0]) =>
+        this.emitSample(sample),
+      window: (window: Parameters<typeof this.emitWindow>[0]) =>
+        this.emitWindow(window),
+      latency: (sample: Parameters<typeof this.emitLatency>[0]) =>
+        this.emitLatency(sample),
+    };
+    if (adapter) {
+      return adapter.runPhase({
+        phase,
+        config: this.config,
+        signal,
+        loadedLatency,
+        emit,
+      });
+    }
+    return runWorkerPhase({
+      phase,
+      config: this.config,
+      runId,
+      uploadTransport,
+      loadedLatency,
+      signal,
+      emit,
+    });
+  }
+
+  private async runUploadWithRuntimeFallback(
+    runId: string,
+    uploadTransport: "fetch-stream" | "xhr-chunked",
+    loadedLatency: boolean,
+    diagnostics: SpeedTestDiagnostics,
+    signal: AbortSignal,
+  ) {
+    try {
+      return await this.runThroughput(
+        "upload",
+        runId,
+        uploadTransport,
+        loadedLatency,
+        signal,
+      );
+    } catch (error) {
+      if (
+        signal.aborted ||
+        uploadTransport !== "fetch-stream" ||
+        !this.config.test.upload.allowFallback ||
+        !diagnostics.capabilityReport.xhrUpload
+      ) {
+        throw error;
+      }
+      diagnostics.actualTransports.upload = "xhr-chunked";
+      diagnostics.measurementBasis = measurementBasisFor(diagnostics.actualTransports);
+      diagnostics.fallbackReasons.push(
+        "fetch upload streaming failed at runtime; fell back to xhr-chunked",
+      );
+      return this.runThroughput("upload", runId, "xhr-chunked", loadedLatency, signal);
+    }
+  }
+
+  private shouldUseSyntheticAdapter(): boolean {
+    const process = (globalThis as { process?: { env?: { NODE_ENV?: string } } })
+      .process;
+    return (
+      typeof Worker !== "function" &&
+      typeof process === "object" &&
+      process.env?.NODE_ENV === "test"
+    );
+  }
+
+  private enterPhase(phase: SpeedTestPhase): void {
+    this.state = { ...this.state, phase };
+    this.emit({ type: "phase-start", phase });
+  }
+
+  private emitSample(
+    sample: Extract<SpeedTestEvent, { type: "sample" }>["sample"],
+  ): void {
+    this.state = { ...this.state, latestSample: sample };
+    this.emit({ type: "sample", sample });
+  }
+
+  private emitWindow(
+    window: Extract<SpeedTestEvent, { type: "window" }>["window"],
+  ): void {
+    this.emit({ type: "window", window });
+  }
+
+  private emitLatency(
+    sample: Extract<SpeedTestEvent, { type: "latency-sample" }>["sample"],
+  ): void {
+    // Failed loaded-latency probes carry the timeout duration, not a real
+    // reading — keep them out of the live tile (the aggregate drops them too).
+    if (sample.ok) {
+      this.state = { ...this.state, latestLatencySample: sample };
+    }
+    this.emit({ type: "latency-sample", sample });
+  }
+
+  /**
+   * Pre-flight connectivity gate. Probes every distinct target the selected run
+   * will actually use (download / upload / latency) and throws a typed
+   * `target-unreachable` error on the first one that can't be reached at all —
+   * a network error or no response within the timeout (a hung/dropped
+   * connection). A reachable endpoint that answers with a non-2xx status is left
+   * to the throughput phases, so this never false-fails on a wrong-path 404.
+   */
+  private async assertTargetReachable(
+    selection: NormalizedTestSelectionConfig,
+    signal: AbortSignal,
+  ): Promise<void> {
+    for (const target of this.reachabilityTargets(selection)) {
+      const probe = await probeReachability(target, this.config.test.latency, signal);
+      if (!probe.reachable) {
+        throw {
+          code: "target-unreachable",
+          message: `Couldn't reach the test server at ${target} (${probe.reason}). Check that the URL is correct, the server is running, and that it allows requests from this page (CORS).`,
+          recoverable: true,
+        } satisfies SpeedTestError;
+      }
+    }
+  }
+
+  /** The distinct target URLs the selected run will exercise, deduped. */
+  private reachabilityTargets(selection: NormalizedTestSelectionConfig): string[] {
+    const { targets } = this.config;
+    const urls = new Set<string>();
+    if (selection.phases.includes("idle-latency")) {
+      urls.add(targets.latency);
+    }
+    if (selection.phases.includes("download")) {
+      urls.add(targets.download);
+    }
+    if (selection.phases.includes("upload")) {
+      urls.add(targets.upload);
+    }
+    // Loaded-latency probes hit the latency target during the throughput phases.
+    if (selection.loadedLatency.download || selection.loadedLatency.upload) {
+      urls.add(targets.latency);
+    }
+    if (urls.size === 0) {
+      urls.add(targets.latency);
+    }
+    return [...urls];
+  }
+
+  private emit(event: SpeedTestEvent): void {
+    for (const handler of this.handlers.get(event.type) ?? []) {
+      handler(event);
+    }
+  }
+}
+
+function measurementBasisFor(actualTransports: {
+  download: "fetch-stream" | "xhr-chunked" | null;
+  upload: "fetch-stream" | "xhr-chunked" | null;
+}): Record<ThroughputPhase, string | null> {
+  return {
+    download: actualTransports.download ? "response stream bytes read" : null,
+    upload:
+      actualTransports.upload === null
+        ? null
+        : actualTransports.upload === "fetch-stream"
+          ? "request stream pull/backpressure chunks"
+          : "xhr upload progress events",
+  };
+}
+
+function resolveRunSelection(
+  baseSelection: NormalizedTestSelectionConfig,
+  options: SpeedTestRunOptions,
+): NormalizedTestSelectionConfig {
+  try {
+    return normalizeTestSelection(options.selection, baseSelection);
+  } catch (error) {
+    throw {
+      code: "config-invalid",
+      message: error instanceof Error ? error.message : String(error),
+      recoverable: true,
+      diagnostics: { selection: options.selection },
+    } satisfies SpeedTestError;
+  }
+}
+
+function transportMissingError(phase: ThroughputPhase): SpeedTestError {
+  return {
+    code: phase === "download" ? "download-failed" : "upload-failed",
+    message: `No ${phase} transport was resolved for the selected run.`,
+    phase,
+    recoverable: false,
+  };
+}
+
+function readPartialPhaseResult(error: unknown): ThroughputPhaseResult | null {
+  if (error instanceof PartialThroughputPhaseError) {
+    return error.partialPhaseResult;
+  }
+  if (typeof error === "object" && error !== null && "partialPhaseResult" in error) {
+    return (error as { partialPhaseResult: ThroughputPhaseResult }).partialPhaseResult;
+  }
+  return null;
+}
+
+function errorCodeForPhase(phase: SpeedTestPhase | null): SpeedTestError["code"] {
+  switch (phase) {
+    case "idle-latency":
+      return "latency-failed";
+    case "download":
+      return "download-failed";
+    case "upload":
+      return "upload-failed";
+    case "finalize":
+      return "upload-failed";
+    case null:
+      return "download-failed";
+  }
+}
+
+function isNormalized(config: SpeedTestConfig): config is NormalizedSpeedTestConfig {
+  return "diagnostics" in config && "configHash" in config.diagnostics;
+}
+
+function structuredCloneSafe<T>(value: T): T {
+  if (typeof structuredClone === "function") {
+    return structuredClone(value);
+  }
+  return JSON.parse(JSON.stringify(value)) as T;
+}

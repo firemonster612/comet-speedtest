@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind ignores node_modules by default, but the shadcn components ship from
+ * this package (resolved under node_modules in the apps). Register them so their
+ * utility classes are emitted. Relative to the consumed file (dist/styles.css),
+ * this points at the built components.
+ */
+@source "./components";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * shadcn/ui token surface. The brandable tokens default here and are overridden
+ * per-instance at runtime by applyTheme() from the runtime config, so the
+ * production app keeps its per-customer theming while components consume the
+ * standard shadcn semantic tokens (bg-primary, text-muted-foreground, ...).
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font);
+}
+
+:root {
+  --background: #fbfcfd;
+  --foreground: #17202a;
+  --card: #ffffff;
+  --card-foreground: #17202a;
+  --popover: #ffffff;
+  --popover-foreground: #17202a;
+  --primary: #6dbbdf;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f6;
+  --secondary-foreground: #17202a;
+  --muted: #eef2f6;
+  --muted-foreground: #5d6978;
+  --accent: #c95f3d;
+  --accent-foreground: #ffffff;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --border: #d7dee7;
+  --input: #d7dee7;
+  --ring: #6dbbdf;
+  --radius: 8px;
+  --font: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.dark {
+  --background: #0f1419;
+  --foreground: #edf4f8;
+  --card: #171f27;
+  --card-foreground: #edf4f8;
+  --popover: #171f27;
+  --popover-foreground: #edf4f8;
+  --primary: #6dbbdf;
+  --primary-foreground: #0b1014;
+  --secondary: #1e2730;
+  --secondary-foreground: #edf4f8;
+  --muted: #1e2730;
+  --muted-foreground: #a8b5c2;
+  --accent: #ff9a78;
+  --accent-foreground: #0b1014;
+  --destructive: #ff6b5e;
+  --destructive-foreground: #0b1014;
+  --border: #344454;
+  --input: #344454;
+  --ring: #6dbbdf;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font);
+  }
+}
+
+/*
+ * The brand eyebrow renders the (brandable) accent as small text. Raw --accent
+ * can fall below the AA 4.5:1 floor at this size (the default terracotta is
+ * 4.05:1 on white), so mix it toward the foreground: this lifts contrast in both
+ * light and dark and tracks whatever accent a customer configures.
+ */
+.ls-eyebrow {
+  color: color-mix(in oklab, var(--accent) 80%, var(--foreground));
+}
+
+/*
+ * Light-beam sweep shown while the primary action is traveling between states
+ * (launch, stop, complete, error, re-run - anything that sets `primaryMoving`).
+ * The control sheds its button look (`.ls-primary-traveling`) and becomes a
+ * faintly-lit instrument plate; a bright leading edge of light (the `__strip`)
+ * glides across it, *emitting* the surface rather than frosting it. On an app
+ * called lightspeed the control dissolving into a line of light that the UI is
+ * drawn by is the point - so no blur/desaturate here: those read as "erasing"; a
+ * luminous edge reads as "drawing". The beam glows `--primary` by default and
+ * `--accent` on the sweep into results (`.ls-sweep-accent` sets --ls-wave-color),
+ * so the same motion reads as "acquiring signal" vs "locking the reading".
+ * Reduced motion never mounts the strip (the flag stays false) and the global
+ * media query below would freeze it regardless.
+ */
+.ls-sweep-accent {
+  --ls-wave-color: var(--accent);
+}
+
+.ls-primary-traveling {
+  /* The plate the beam sweeps over: a calm surface faintly lit in the sweep's
+     colour - lit, never the greyed-out (disabled-looking) hole a muted fill
+     reads as. Unlayered, so it overrides the button variant's bg + hover. */
+  background-color: color-mix(
+    in oklab,
+    var(--card) 86%,
+    var(--ls-wave-color, var(--primary))
+  );
+  box-shadow: inset 0 0 0 1px
+    color-mix(in oklab, var(--ls-wave-color, var(--primary)) 22%, transparent);
+}
+
+.ls-primary-wave {
+  /* Outer span only clips the beam to the button's rounded rect. */
+}
+
+.ls-primary-wave__strip {
+  animation: ls-primary-wave-sweep 1100ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  /* A travelling line of light: a long faint trail rising to a bright leading
+     edge, all in the sweep colour. The strip travels left to right, so the right
+     side leads - it carries the crisp 1px highlight and the soft outer glow. */
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--ls-wave-color, var(--primary)) 16%, transparent) 48%,
+    color-mix(in oklab, var(--ls-wave-color, var(--primary)) 58%, transparent) 82%,
+    color-mix(in oklab, var(--ls-wave-color, var(--primary)) 90%, var(--card)) 100%
+  );
+  border-radius: inherit;
+  box-shadow:
+    0 0 16px 1px
+      color-mix(in oklab, var(--ls-wave-color, var(--primary)) 40%, transparent),
+    inset -1px 0 0
+      color-mix(in oklab, var(--ls-wave-color, var(--primary)) 85%, var(--card));
+  inset-block: 0;
+  left: 0;
+  position: absolute;
+  transform: translateX(-130%);
+  width: 55%;
+}
+
+@keyframes ls-primary-wave-sweep {
+  from {
+    transform: translateX(-130%);
+  }
+
+  68% {
+    transform: translateX(130%);
+  }
+
+  to {
+    transform: translateX(130%);
+  }
+}
+
+/*
+ * Reduced-motion fallback. Collapses CSS transitions/animations to an instant
+ * change for users who ask for less motion - the dial's progress sweep, the
+ * progress bar, tab/Select transitions, the loading spinner, and the live-dot
+ * pulse. The dial's JS count-up reads the same media query and snaps too.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

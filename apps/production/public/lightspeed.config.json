@@ -1,0 +1,37 @@
+{
+  "$schema": "https://lightspeed.dev/schemas/lightspeed.config.schema.json",
+  "targets": {
+    "download": "/speedtest/download/large.bin",
+    "upload": "/speedtest/upload",
+    "latency": "/speedtest/latency"
+  },
+  "test": {
+    "download": {
+      "workers": 4,
+      "transport": "auto"
+    },
+    "upload": {
+      "workers": 4,
+      "transport": "auto",
+      "allowFallback": true,
+      "fallbackChunkSizeBytes": 16777216
+    },
+    "sampling": {
+      "intervalMs": 500,
+      "samplesPerWindow": 6,
+      "measuredWindowCount": 5,
+      "warmupWindowCount": 1,
+      "percentile": 75
+    },
+    "latency": {
+      "idleRequests": 8,
+      "loadedIntervalMs": 750,
+      "timeoutMs": 2500,
+      "method": "HEAD"
+    }
+  },
+  "result": {
+    "submitUrl": null,
+    "includeRawSamples": false
+  }
+}

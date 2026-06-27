@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 88,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "all",
+  "experimentalSortPackageJson": true,
+  "experimentalSortImports": true,
+  "experimentalTailwindClassSorting": true,
+  "ignorePatterns": [
+    "dist",
+    "coverage",
+    "node_modules",
+    "playwright-report",
+    "test-results",
+    ".impeccable",
+    ".playwright-mcp",
+    "DESIGN.md",
+    "PRODUCT.md"
+  ]
+}

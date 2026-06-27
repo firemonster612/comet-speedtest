@@ -1,0 +1,58 @@
+{
+  "name": "@lightspeed/core",
+  "version": "0.1.0",
+  "description": "Browser-first speed-test engine, result records, diagnostics, and quality scoring.",
+  "keywords": [
+    "browser",
+    "bufferbloat",
+    "internet-speed-test",
+    "latency",
+    "network",
+    "speed-test",
+    "throughput"
+  ],
+  "license": "MIT",
+  "files": [
+    "README.md",
+    "LICENSE",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "!dist/**/__tests__/**"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./diagnostics": {
+      "types": "./dist/diagnostics.d.ts",
+      "import": "./dist/diagnostics.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsc -b && node ../../scripts/fix-dist-imports.mjs dist",
+    "test": "vitest run",
+    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.test.json --pretty false"
+  },
+  "dependencies": {
+    "@lightspeed/config": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
