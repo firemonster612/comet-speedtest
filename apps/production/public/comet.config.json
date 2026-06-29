@@ -1,5 +1,4 @@
 {
-  "$schema": "https://comet-speedtest.dev/schemas/comet.config.schema.json",
   "targets": {
     "download": "/speedtest/download/large.bin",
     "upload": "/speedtest/upload",
