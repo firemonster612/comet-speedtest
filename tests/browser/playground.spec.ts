@@ -4,7 +4,7 @@ test("playground loads a profile, edits config, and shows diagnostics", async ({
   page,
 }) => {
   await routeFixtureSpeedTest(page);
-  await page.goto("http://127.0.0.1:4174/?config=/lightspeed.config.json");
+  await page.goto("http://127.0.0.1:4174/?config=/comet.config.json");
 
   await expect(
     page.getByRole("heading", { name: "Speed test playground" }),
@@ -40,12 +40,12 @@ test("playground loads a profile, edits config, and shows diagnostics", async ({
 });
 
 async function routeFixtureSpeedTest(page: Page): Promise<void> {
-  await page.route("http://127.0.0.1:4174/lightspeed.config.json", async (route) => {
+  await page.route("http://127.0.0.1:4174/comet.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       json: {
         brand: {
-          name: "Lightspeed Lab",
+          name: "Comet Lab",
           serverLabel: "Local lab profile",
         },
         targets: {

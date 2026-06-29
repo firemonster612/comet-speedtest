@@ -1,6 +1,6 @@
-import type { SpeedTestResult } from "@lightspeed/core";
-import { SampleChart } from "@lightspeed/ui";
-import { Button } from "@lightspeed/ui/components/ui/button";
+import type { SpeedTestResult } from "@comet-speedtest/core";
+import { SampleChart } from "@comet-speedtest/ui";
+import { Button } from "@comet-speedtest/ui/components/ui/button";
 import {
   Table,
   TableBody,
@@ -8,7 +8,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@lightspeed/ui/components/ui/table";
+} from "@comet-speedtest/ui/components/ui/table";
 import { Clipboard, Download } from "lucide-react";
 
 /**

@@ -3,14 +3,14 @@ import {
   type RuntimeBrand,
   type RuntimeContent,
   type RuntimeTheme,
-} from "@lightspeed/config";
+} from "@comet-speedtest/config";
 import type {
   SpeedTestDiagnostics,
   SpeedTestConfig,
   SpeedTestError,
   SpeedTestResult,
-} from "@lightspeed/core";
-import { scoreConnectionQuality } from "@lightspeed/core";
+} from "@comet-speedtest/core";
+import { scoreConnectionQuality } from "@comet-speedtest/core";
 import { LineChart, Loader2, Play, RotateCcw, Square } from "lucide-react";
 import {
   type ReactNode,
@@ -57,7 +57,7 @@ export function SpeedTestWidget(props: {
   const { onError, onResult } = props;
   // Standalone-embed convenience: pass `theme` and the widget themes itself,
   // no setup. For an app with its own chrome or dark mode, wrap it in
-  // `<LightspeedThemeProvider theme>` and omit this prop instead - both write
+  // `<CometThemeProvider theme>` and omit this prop instead - both write
   // the same tokens to `<html>`, so doing both applies the theme twice. No-op
   // when `theme` is undefined.
   useApplyTheme(props.theme);

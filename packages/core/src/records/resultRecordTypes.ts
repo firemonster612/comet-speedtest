@@ -12,7 +12,7 @@ export interface CreateResultRecordOptions<TContext = Record<string, unknown>> {
 }
 
 export interface SpeedTestResultRecord<TContext = Record<string, unknown>> {
-  schemaVersion: "lightspeed-result-record/v1";
+  schemaVersion: "comet-result-record/v1";
   createdAt: string;
   result: SpeedTestResult;
   selectedTarget?: TargetProfileSummary;

@@ -1,4 +1,4 @@
-import type { NormalizedLatencyConfig } from "@lightspeed/config";
+import type { NormalizedLatencyConfig } from "@comet-speedtest/config";
 
 import type { LatencyResult, LatencySample } from "../results/resultTypes";
 import { percentile } from "../sampling/percentile";

@@ -1,6 +1,6 @@
-# @lightspeed/core
+# @comet-speedtest/core
 
-`@lightspeed/core` runs a browser speed test and returns a typed result. It owns
+`@comet-speedtest/core` runs a browser speed test and returns a typed result. It owns
 the speed-test run lifecycle: target reachability, idle latency, download,
 upload, latency under load, diagnostics, and final scoring.
 
@@ -10,13 +10,13 @@ adapters live on subpaths.
 ## Install
 
 ```sh
-pnpm add @lightspeed/core @lightspeed/config
+pnpm add @comet-speedtest/core @comet-speedtest/config
 ```
 
 ## Create A Speed Test
 
 ```ts
-import { createSpeedTest } from "@lightspeed/core";
+import { createSpeedTest } from "@comet-speedtest/core";
 
 const engine = createSpeedTest({
   targets: {
@@ -114,7 +114,7 @@ The final `SpeedTestResult` includes:
 Create a portable result payload for storage or submission:
 
 ```ts
-import { createResultRecord } from "@lightspeed/core";
+import { createResultRecord } from "@comet-speedtest/core";
 
 const record = createResultRecord(result, {
   rawSamples: "strip",
@@ -123,10 +123,10 @@ const record = createResultRecord(result, {
 
 ## Diagnostics Entry Point
 
-Use `@lightspeed/core/diagnostics` for lower-level tools:
+Use `@comet-speedtest/core/diagnostics` for lower-level tools:
 
 ```ts
-import { selectTarget } from "@lightspeed/core/diagnostics";
+import { selectTarget } from "@comet-speedtest/core/diagnostics";
 
 const selected = await selectTarget({
   targets: [
@@ -147,13 +147,13 @@ resolution, latency aggregation, percentiles, and throughput windows.
 
 ## Testing Entry Point
 
-Use `@lightspeed/core/testing` when tests need deterministic measurements:
+Use `@comet-speedtest/core/testing` when tests need deterministic measurements:
 
 ```ts
 import {
   createTestSpeedTest,
   SyntheticMeasurementAdapter,
-} from "@lightspeed/core/testing";
+} from "@comet-speedtest/core/testing";
 
 const engine = createTestSpeedTest(config, {
   measurementAdapter: new SyntheticMeasurementAdapter(),

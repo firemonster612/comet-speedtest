@@ -1,5 +1,5 @@
 import { Progress as ProgressPrimitive } from "@base-ui/react/progress";
-import { cn } from "@lightspeed/ui/lib/utils";
+import { cn } from "@comet-speedtest/ui/lib/utils";
 
 function Progress({
   className,

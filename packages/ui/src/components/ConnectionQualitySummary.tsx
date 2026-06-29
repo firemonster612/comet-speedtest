@@ -3,7 +3,7 @@ import type {
   QualityGrade,
   QualityLimitingFactor,
   QualityScore,
-} from "@lightspeed/core";
+} from "@comet-speedtest/core";
 import { ChevronDown, Gamepad2, Globe2, MonitorPlay, PhoneCall } from "lucide-react";
 import type { ComponentType } from "react";
 

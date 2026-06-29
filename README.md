@@ -1,6 +1,6 @@
-# Lightspeed
+# Comet
 
-Lightspeed is a browser-first speed test toolkit. The core package owns
+Comet is a browser-first speed test toolkit. The core package owns
 measurement. The UI package owns reusable React views. The production app is a
 static deployable page. The playground is the engineering console for endpoint
 tuning and diagnostics.
@@ -8,9 +8,9 @@ tuning and diagnostics.
 ## Release Scope
 
 The current npm release scope is limited to the publishable library packages:
-`@lightspeed/core` and `@lightspeed/config`.
+`@comet-speedtest/core` and `@comet-speedtest/config`.
 
-The workspace root, `@lightspeed/ui`, `apps/production`, and `apps/playground`
+The workspace root, `@comet-speedtest/ui`, `apps/production`, and `apps/playground`
 remain private. The production app ships from this GitHub repository as
 deployable source/template for teams that want a branded page, not as an npm
 package. The playground remains an internal engineering console.
@@ -33,7 +33,7 @@ package. The playground remains an internal engineering console.
   React UI primitives, controller hook, widget, result display, charts, errors,
   and diagnostics.
 - `apps/production` (private deployable source/template): static
-  customer-facing app that loads `/lightspeed.config.json`.
+  customer-facing app that loads `/comet.config.json`.
 - `apps/playground` (private): config editor and diagnostics console. Supports
   `?config=/path/to/profile.json`.
 - `examples/nginx`: endpoint and static hosting examples.
@@ -56,7 +56,7 @@ point at compiled `dist` for publish-time consumption.
 
 ## Selective Runs
 
-`@lightspeed/core` can run the full test or a selected subset:
+`@comet-speedtest/core` can run the full test or a selected subset:
 
 ```ts
 const engine = createSpeedTest(config);

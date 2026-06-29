@@ -1,4 +1,4 @@
-import type { SpeedTestResult } from "@lightspeed/core";
+import type { SpeedTestResult } from "@comet-speedtest/core";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

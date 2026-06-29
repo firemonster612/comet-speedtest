@@ -220,7 +220,7 @@ export function scoreConnectionQuality(
   );
 
   return {
-    schemaVersion: "lightspeed-quality/v1",
+    schemaVersion: "comet-quality/v1",
     overall,
     webBrowsing,
     gaming,

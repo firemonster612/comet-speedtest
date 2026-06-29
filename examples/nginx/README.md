@@ -1,4 +1,4 @@
-# Lightspeed Nginx Example
+# Comet Nginx Example
 
 This directory contains reference snippets for hosting the static production app
 and the byte-serving endpoints.
@@ -16,7 +16,7 @@ and the byte-serving endpoints.
 /usr/share/nginx/html/
   index.html
   assets/
-  lightspeed.config.json
+  comet.config.json
   brand/
   speedtest/
     download/
@@ -32,8 +32,8 @@ truncate --size 10G /usr/share/nginx/html/speedtest/download/large.bin
 Install the snippets at the paths referenced by `nginx.conf`:
 
 ```sh
-install -D -m 0644 upload-discard.conf /etc/nginx/snippets/lightspeed-upload-discard.conf
-install -D -m 0644 cors.conf /etc/nginx/snippets/lightspeed-cors.conf
+install -D -m 0644 upload-discard.conf /etc/nginx/snippets/comet-upload-discard.conf
+install -D -m 0644 cors.conf /etc/nginx/snippets/comet-cors.conf
 ```
 
 For cross-origin endpoint hosting, include `cors.conf` inside the speed test

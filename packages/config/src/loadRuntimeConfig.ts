@@ -5,7 +5,7 @@ import type { NormalizedSpeedTestConfig, RuntimeConfig } from "./runtimeConfig";
 export async function loadRuntimeConfig(
   options: { url?: string; signal?: AbortSignal } = {},
 ): Promise<RuntimeConfig> {
-  const url = options.url ?? "/lightspeed.config.json";
+  const url = options.url ?? "/comet.config.json";
   const init: RequestInit = {
     headers: { accept: "application/json" },
   };
@@ -50,7 +50,7 @@ export async function loadAndNormalizeConfig(
     strict?: boolean;
   } = {},
 ): Promise<NormalizedSpeedTestConfig> {
-  const url = options.url ?? "/lightspeed.config.json";
+  const url = options.url ?? "/comet.config.json";
   const load: { url: string; signal?: AbortSignal } = { url };
   if (options.signal) {
     load.signal = options.signal;

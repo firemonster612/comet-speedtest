@@ -5,22 +5,22 @@ import {
   validateConfig,
   type RuntimeConfig,
   type RuntimeTheme,
-} from "@lightspeed/config";
-import { ErrorNotice, LightspeedThemeProvider, SpeedTestWidget } from "@lightspeed/ui";
+} from "@comet-speedtest/config";
+import { ErrorNotice, CometThemeProvider, SpeedTestWidget } from "@comet-speedtest/ui";
 import {
   Alert,
   AlertAction,
   AlertDescription,
-} from "@lightspeed/ui/components/ui/alert";
-import { Button } from "@lightspeed/ui/components/ui/button";
+} from "@comet-speedtest/ui/components/ui/alert";
+import { Button } from "@comet-speedtest/ui/components/ui/button";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@lightspeed/ui/components/ui/tabs";
+} from "@comet-speedtest/ui/components/ui/tabs";
 
-import "@lightspeed/ui/styles.css";
+import "@comet-speedtest/ui/styles.css";
 import {
   Braces,
   Gauge,
@@ -127,7 +127,7 @@ function PlaygroundPreview({
       </Alert>
     );
   }
-  // No `theme` prop: PlaygroundApp wraps the page in LightspeedThemeProvider,
+  // No `theme` prop: PlaygroundApp wraps the page in CometThemeProvider,
   // so the live-edited draft theme is already applied to `<html>`.
   return (
     <SpeedTestWidget
@@ -227,14 +227,14 @@ export function PlaygroundApp() {
     return (
       url.searchParams.get("config") ??
       savedStateRef.current?.configUrl ??
-      "/lightspeed.config.json"
+      "/comet.config.json"
     );
   });
   const [reloadNonce, setReloadNonce] = useState(0);
   const [fetched, setFetched] = useState<RuntimeConfig | null>(null);
   const [draft, setDraft] = useState<RuntimeConfig>(() => {
     const saved = savedStateRef.current;
-    const savedUrl = saved?.configUrl ?? "/lightspeed.config.json";
+    const savedUrl = saved?.configUrl ?? "/comet.config.json";
     if (saved?.draft && savedUrl === configUrl) {
       try {
         const hydrated = completeRuntimeConfig(saved.draft);
@@ -418,7 +418,7 @@ export function PlaygroundApp() {
   }
 
   return (
-    <LightspeedThemeProvider theme={previewTheme}>
+    <CometThemeProvider theme={previewTheme}>
       <div className="ls-playground flex min-h-screen flex-col bg-background text-foreground">
         <h1 className="sr-only">Speed test playground</h1>
         <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-5 px-4 py-5 sm:px-6">
@@ -475,7 +475,7 @@ export function PlaygroundApp() {
           </div>
         </div>
       </div>
-    </LightspeedThemeProvider>
+    </CometThemeProvider>
   );
 }
 
@@ -536,7 +536,7 @@ function errorKey(error: Error): string {
   return `${error.name}:${error.message}`;
 }
 
-const STORAGE_KEY = "lightspeed:playground";
+const STORAGE_KEY = "comet:playground";
 
 interface SavedPlaygroundState {
   configUrl?: string;

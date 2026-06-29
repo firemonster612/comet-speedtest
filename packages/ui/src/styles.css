@@ -117,7 +117,7 @@
  * The control sheds its button look (`.ls-primary-traveling`) and becomes a
  * faintly-lit instrument plate; a bright leading edge of light (the `__strip`)
  * glides across it, *emitting* the surface rather than frosting it. On an app
- * called lightspeed the control dissolving into a line of light that the UI is
+ * called Comet, the control dissolving into a line of light that the UI is
  * drawn by is the point - so no blur/desaturate here: those read as "erasing"; a
  * luminous edge reads as "drawing". The beam glows `--primary` by default and
  * `--accent` on the sweep into results (`.ls-sweep-accent` sets --ls-wave-color),

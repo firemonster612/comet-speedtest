@@ -1,4 +1,4 @@
-import type { SpeedSample } from "@lightspeed/core";
+import type { SpeedSample } from "@comet-speedtest/core";
 
 export function selectChartSamples(
   samples: readonly SpeedSample[],

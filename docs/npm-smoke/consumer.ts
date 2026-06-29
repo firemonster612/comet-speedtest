@@ -1,15 +1,15 @@
-import { normalizeConfig, validateConfig } from "@lightspeed/config";
+import { normalizeConfig, validateConfig } from "@comet-speedtest/config";
 import {
   createResultRecord,
   createSpeedTest,
   gradeBufferbloat,
   type SpeedTestResult,
-} from "@lightspeed/core";
-import { selectTarget } from "@lightspeed/core/diagnostics";
+} from "@comet-speedtest/core";
+import { selectTarget } from "@comet-speedtest/core/diagnostics";
 import {
   createTestSpeedTest,
   SyntheticMeasurementAdapter,
-} from "@lightspeed/core/testing";
+} from "@comet-speedtest/core/testing";
 
 const config = normalizeConfig({
   targets: {

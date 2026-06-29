@@ -1,4 +1,4 @@
-import { cn } from "@lightspeed/ui/lib/utils";
+import { cn } from "@comet-speedtest/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 

@@ -7,7 +7,7 @@ export interface PlanComparisonInput {
 }
 
 export interface PlanComparisonResult {
-  schemaVersion: "lightspeed-plan-comparison/v1";
+  schemaVersion: "comet-plan-comparison/v1";
   status: PlanComparisonStatus;
   downloadRatio: number | null;
   uploadRatio: number | null;

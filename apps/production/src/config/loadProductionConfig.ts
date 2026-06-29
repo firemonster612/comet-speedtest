@@ -1,8 +1,8 @@
-import { loadAndNormalizeConfig } from "@lightspeed/config";
+import { loadAndNormalizeConfig } from "@comet-speedtest/config";
 
 export async function loadProductionConfig(signal?: AbortSignal) {
   return loadAndNormalizeConfig({
-    url: "/lightspeed.config.json",
+    url: "/comet.config.json",
     ...(signal ? { signal } : {}),
   });
 }

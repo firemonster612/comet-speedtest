@@ -3,7 +3,7 @@ import {
   normalizeTestSelection,
   type NormalizedSpeedTestConfig,
   type NormalizedTestSelectionConfig,
-} from "@lightspeed/config";
+} from "@comet-speedtest/config";
 
 import { probeReachability, runIdleLatency } from "../latency/latencyProbe";
 import { gradeBufferbloat } from "../results/bufferbloat";

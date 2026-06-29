@@ -1,4 +1,4 @@
-import type { ColorScheme } from "@lightspeed/config";
+import type { ColorScheme } from "@comet-speedtest/config";
 import { Monitor, Moon, Sun } from "lucide-react";
 
 import { Button } from "./ui/button";

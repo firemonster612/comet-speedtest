@@ -7,7 +7,7 @@
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "@lightspeed/ui/*": ["./src/*"]
+      "@comet-speedtest/ui/*": ["./src/*"]
     }
   },
   "include": ["src"],

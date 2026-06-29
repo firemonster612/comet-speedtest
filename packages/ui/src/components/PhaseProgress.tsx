@@ -2,7 +2,7 @@ import type {
   SpeedTestPhase,
   SpeedTestRunPhase,
   SpeedTestState,
-} from "@lightspeed/core";
+} from "@comet-speedtest/core";
 import { Check } from "lucide-react";
 
 import { cn } from "../lib/utils";

@@ -1,4 +1,4 @@
-import type { SpeedTestError } from "@lightspeed/core";
+import type { SpeedTestError } from "@comet-speedtest/core";
 import { TriangleAlert, X } from "lucide-react";
 
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";

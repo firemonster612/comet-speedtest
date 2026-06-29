@@ -20,5 +20,5 @@ export {
 export { useApplyTheme, useColorScheme } from "./hooks/useTheme";
 export { cn } from "./lib/utils";
 export { applyTheme } from "./theme/applyTheme";
-export { LightspeedThemeProvider } from "./theme/ThemeProvider";
+export { CometThemeProvider } from "./theme/ThemeProvider";
 export { defaultThemeTokens } from "./theme/tokens";

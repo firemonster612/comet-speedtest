@@ -1,13 +1,13 @@
-import { exportConfig, type RuntimeConfig } from "@lightspeed/config";
+import { exportConfig, type RuntimeConfig } from "@comet-speedtest/config";
 import {
   Alert,
   AlertAction,
   AlertDescription,
-} from "@lightspeed/ui/components/ui/alert";
-import { Badge } from "@lightspeed/ui/components/ui/badge";
-import { Button } from "@lightspeed/ui/components/ui/button";
-import { Input } from "@lightspeed/ui/components/ui/input";
-import { Textarea } from "@lightspeed/ui/components/ui/textarea";
+} from "@comet-speedtest/ui/components/ui/alert";
+import { Badge } from "@comet-speedtest/ui/components/ui/badge";
+import { Button } from "@comet-speedtest/ui/components/ui/button";
+import { Input } from "@comet-speedtest/ui/components/ui/input";
+import { Textarea } from "@comet-speedtest/ui/components/ui/textarea";
 import { RefreshCcw, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 

@@ -69,7 +69,7 @@ describe("compareAgainstPlan", () => {
         uploadMbps: 100,
       }),
     ).toMatchObject({
-      schemaVersion: "lightspeed-plan-comparison/v1",
+      schemaVersion: "comet-plan-comparison/v1",
       status: "meets-plan",
       downloadRatio: 0.9,
       uploadRatio: 0.95,

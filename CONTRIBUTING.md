@@ -1,8 +1,8 @@
 # Contributing
 
-Thanks for taking the time to work on Lightspeed.
+Thanks for taking the time to work on Comet.
 
-Lightspeed has two jobs: a browser speed-test library for teams building their
+Comet has two jobs: a browser speed-test library for teams building their
 own client, and a production app for teams that want a deployable branded page.
 Changes should keep those two jobs separate. The public library Interface should
 stay small; diagnostics and test-only helpers belong on explicit subpaths.

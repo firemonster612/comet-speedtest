@@ -43,7 +43,7 @@ export function compareAgainstPlan(
     .map((item) => item.metric);
 
   return {
-    schemaVersion: "lightspeed-plan-comparison/v1",
+    schemaVersion: "comet-plan-comparison/v1",
     status:
       !hasExpected || hasUnknownRequired
         ? "unknown"

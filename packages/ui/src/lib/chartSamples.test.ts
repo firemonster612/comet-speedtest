@@ -1,4 +1,4 @@
-import type { SpeedSample } from "@lightspeed/core";
+import type { SpeedSample } from "@comet-speedtest/core";
 import { describe, expect, it } from "vitest";
 
 import { selectChartSamples } from "./chartSamples";

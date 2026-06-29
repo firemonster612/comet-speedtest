@@ -1,5 +1,5 @@
-import type { SpeedSample } from "@lightspeed/core";
-import { percentile } from "@lightspeed/core/diagnostics";
+import type { SpeedSample } from "@comet-speedtest/core";
+import { percentile } from "@comet-speedtest/core/diagnostics";
 
 const LIVE_THROUGHPUT_PERCENTILE = 75;
 

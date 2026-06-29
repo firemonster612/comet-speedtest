@@ -79,7 +79,7 @@ describe("scoreConnectionQuality", () => {
   it("scores complete strong results and exposes audited inputs", () => {
     const quality = scoreConnectionQuality(result());
 
-    expect(quality.schemaVersion).toBe("lightspeed-quality/v1");
+    expect(quality.schemaVersion).toBe("comet-quality/v1");
     expect(quality.inputs).toMatchObject({
       downloadMbps: 250,
       uploadMbps: 50,

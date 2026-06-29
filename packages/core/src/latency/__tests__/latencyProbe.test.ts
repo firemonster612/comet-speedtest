@@ -1,4 +1,4 @@
-import type { NormalizedLatencyConfig } from "@lightspeed/config";
+import type { NormalizedLatencyConfig } from "@comet-speedtest/config";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { probeReachability } from "../latencyProbe";

@@ -1,5 +1,5 @@
 import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
-import { cn } from "@lightspeed/ui/lib/utils";
+import { cn } from "@comet-speedtest/ui/lib/utils";
 
 function Switch({
   className,

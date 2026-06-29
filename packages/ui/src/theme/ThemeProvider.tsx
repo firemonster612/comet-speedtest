@@ -1,11 +1,11 @@
-import type { RuntimeTheme } from "@lightspeed/config";
+import type { RuntimeTheme } from "@comet-speedtest/config";
 import type { ReactNode } from "react";
 
 import { useApplyTheme } from "../hooks/useTheme";
 
 /**
  * Applies a runtime theme to the document root (`<html>`) for everything
- * rendered beneath it. This is the recommended way to theme a Lightspeed app.
+ * rendered beneath it. This is the recommended way to theme a Comet app.
  *
  * Theming writes the shadcn semantic tokens *and* the `.dark` class onto
  * `<html>` (there is no media-query dark mode — `.dark` only exists once a theme
@@ -21,7 +21,7 @@ import { useApplyTheme } from "../hooks/useTheme";
  * where the widget is the only themed thing on the page — and it must not be
  * combined with this provider, or the theme is applied twice.
  */
-export function LightspeedThemeProvider({
+export function CometThemeProvider({
   theme,
   children,
 }: {

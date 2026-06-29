@@ -1,4 +1,4 @@
-import type { NormalizedSpeedTestConfig } from "@lightspeed/config";
+import type { NormalizedSpeedTestConfig } from "@comet-speedtest/config";
 import {
   createSpeedTest,
   type PartialResult,
@@ -8,7 +8,7 @@ import {
   type SpeedTestResult,
   type SpeedTestRunOptions,
   type SpeedTestState,
-} from "@lightspeed/core";
+} from "@comet-speedtest/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type SpeedTestEngineHandle = ReturnType<typeof createSpeedTest>;

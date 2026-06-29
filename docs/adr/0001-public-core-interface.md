@@ -6,11 +6,11 @@ Accepted
 
 ## Context
 
-The root `@lightspeed/core` interface exported the concrete engine class, synthetic adapters, transport resolution, latency helpers, and sampling helpers. That made internal seams look as stable as the speed test result interface.
+The root `@comet-speedtest/core` interface exported the concrete engine class, synthetic adapters, transport resolution, latency helpers, and sampling helpers. That made internal seams look as stable as the speed test result interface.
 
 ## Decision
 
-The root `@lightspeed/core` interface exposes `createSpeedTest`, speed-test/result types, result records, plans, quality scoring, and bufferbloat grading. Diagnostics helpers move to `@lightspeed/core/diagnostics`. Test adapters move to `@lightspeed/core/testing`.
+The root `@comet-speedtest/core` interface exposes `createSpeedTest`, speed-test/result types, result records, plans, quality scoring, and bufferbloat grading. Diagnostics helpers move to `@comet-speedtest/core/diagnostics`. Test adapters move to `@comet-speedtest/core/testing`.
 
 ## Consequences
 

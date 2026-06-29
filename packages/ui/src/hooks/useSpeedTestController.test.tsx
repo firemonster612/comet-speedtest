@@ -1,4 +1,4 @@
-import type { NormalizedSpeedTestConfig } from "@lightspeed/config";
+import type { NormalizedSpeedTestConfig } from "@comet-speedtest/config";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -7,7 +7,7 @@ import { useSpeedTestController } from "./useSpeedTestController";
 
 const engines: MockEngine[] = [];
 
-vi.mock("@lightspeed/core", () => ({
+vi.mock("@comet-speedtest/core", () => ({
   createSpeedTest: vi.fn((config: NormalizedSpeedTestConfig) => {
     const engine = new MockEngine(config);
     engines.push(engine);
@@ -141,7 +141,7 @@ describe("useSpeedTestController", () => {
 function config(hash: string): NormalizedSpeedTestConfig {
   return {
     brand: {
-      name: "Lightspeed",
+      name: "Comet",
       logoUrl: "",
       faviconUrl: "",
       serverLabel: "",

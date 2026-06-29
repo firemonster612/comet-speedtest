@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in Lightspeed.
+description: Report a reproducible problem in Comet.
 labels: ["bug"]
 body:
   - type: markdown
@@ -38,7 +38,7 @@ body:
     id: package
     attributes:
       label: Package or app
-      placeholder: "@lightspeed/core, @lightspeed/config, apps/production, apps/playground"
+      placeholder: "@comet-speedtest/core, @comet-speedtest/config, apps/production, apps/playground"
   - type: input
     id: environment
     attributes:

@@ -1,4 +1,4 @@
-# @lightspeed/core
+# @comet-speedtest/core
 
 Browser-first speed-test engine for custom clients.
 
@@ -9,16 +9,16 @@ quality scoring, and bufferbloat grading.
 ## Install
 
 ```sh
-pnpm add @lightspeed/core @lightspeed/config
+pnpm add @comet-speedtest/core @comet-speedtest/config
 ```
 
-`@lightspeed/config` is listed because most callers also want the runtime config
+`@comet-speedtest/config` is listed because most callers also want the runtime config
 types and helpers.
 
 ## Basic Use
 
 ```ts
-import { createSpeedTest } from "@lightspeed/core";
+import { createSpeedTest } from "@comet-speedtest/core";
 
 const engine = createSpeedTest({
   targets: {
@@ -77,7 +77,7 @@ Skipped result buckets are `null`.
 ## Result Records
 
 ```ts
-import { createResultRecord } from "@lightspeed/core";
+import { createResultRecord } from "@comet-speedtest/core";
 
 const record = createResultRecord(result, {
   rawSamples: "strip",
@@ -86,12 +86,12 @@ const record = createResultRecord(result, {
 
 ## Public Entry Points
 
-- `@lightspeed/core`: production speed-test and result Interface.
-- `@lightspeed/core/diagnostics`: lower-level diagnostic helpers.
-- `@lightspeed/core/testing`: deterministic adapters for tests.
+- `@comet-speedtest/core`: production speed-test and result Interface.
+- `@comet-speedtest/core/diagnostics`: lower-level diagnostic helpers.
+- `@comet-speedtest/core/testing`: deterministic adapters for tests.
 
 Worker and measurement adapters stay out of the root entry point. If a test
 needs a deterministic run, import `createTestSpeedTest` from
-`@lightspeed/core/testing`.
+`@comet-speedtest/core/testing`.
 
-Full project docs live in `docs/library/core.md` in the Lightspeed repository.
+Full project docs live in `docs/library/core.md` in the Comet repository.

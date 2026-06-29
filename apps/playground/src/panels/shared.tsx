@@ -1,6 +1,6 @@
-import type { RuntimeConfig, TestFieldSpec } from "@lightspeed/config";
-import { testFieldDefault } from "@lightspeed/config";
-import { Input } from "@lightspeed/ui/components/ui/input";
+import type { RuntimeConfig, TestFieldSpec } from "@comet-speedtest/config";
+import { testFieldDefault } from "@comet-speedtest/config";
+import { Input } from "@comet-speedtest/ui/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -8,8 +8,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@lightspeed/ui/components/ui/select";
-import { Switch } from "@lightspeed/ui/components/ui/switch";
+} from "@comet-speedtest/ui/components/ui/select";
+import { Switch } from "@comet-speedtest/ui/components/ui/switch";
 import {
   type KeyboardEvent,
   type ReactNode,

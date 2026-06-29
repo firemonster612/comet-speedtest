@@ -1,4 +1,4 @@
-import type { NormalizedSpeedTestConfig } from "@lightspeed/config";
+import type { NormalizedSpeedTestConfig } from "@comet-speedtest/config";
 
 import type {
   CapabilityReport,

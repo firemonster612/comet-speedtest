@@ -1,10 +1,10 @@
 import {
   loadAndNormalizeConfig,
   type NormalizedSpeedTestConfig,
-} from "@lightspeed/config";
+} from "@comet-speedtest/config";
 import { useEffect, useState } from "react";
 
-export function useRuntimeConfig(url = "/lightspeed.config.json"): {
+export function useRuntimeConfig(url = "/comet.config.json"): {
   config: NormalizedSpeedTestConfig | null;
   loading: boolean;
   error: Error | null;

@@ -2,9 +2,9 @@ import type {
   ColorScheme,
   RuntimeConfig,
   RuntimeThemePalette,
-} from "@lightspeed/config";
-import { defaultRuntimeConfig } from "@lightspeed/config";
-import { Input } from "@lightspeed/ui/components/ui/input";
+} from "@comet-speedtest/config";
+import { defaultRuntimeConfig } from "@comet-speedtest/config";
+import { Input } from "@comet-speedtest/ui/components/ui/input";
 import { Moon, Sun } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 

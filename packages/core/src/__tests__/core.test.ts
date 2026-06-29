@@ -1,4 +1,4 @@
-import { normalizeConfig } from "@lightspeed/config";
+import { normalizeConfig } from "@comet-speedtest/config";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -53,7 +53,7 @@ function latencyWithMedian(medianMs: number): LatencyResult {
   };
 }
 
-describe("@lightspeed/core math", () => {
+describe("@comet-speedtest/core math", () => {
   it("calculates interpolated percentiles", () => {
     expect(percentile([10, 20, 30, 40, 50], 75)).toBe(40);
     expect(percentile([10, 20], 50)).toBe(15);
@@ -91,7 +91,7 @@ describe("@lightspeed/core math", () => {
   });
 });
 
-describe("@lightspeed/core measurement pipeline", () => {
+describe("@comet-speedtest/core measurement pipeline", () => {
   const samplingFor = (overrides: Record<string, number>) =>
     normalizeConfig({
       targets: { download: "/d", upload: "/u" },
@@ -178,7 +178,7 @@ describe("@lightspeed/core measurement pipeline", () => {
   });
 });
 
-describe("@lightspeed/core engine", () => {
+describe("@comet-speedtest/core engine", () => {
   it("keeps deterministic adapters off the root options interface", () => {
     const assertRootOptionsRejectAdapters = () => {
       createSpeedTest(

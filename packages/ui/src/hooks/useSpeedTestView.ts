@@ -1,11 +1,11 @@
-import type { NormalizedSpeedTestConfig } from "@lightspeed/config";
+import type { NormalizedSpeedTestConfig } from "@comet-speedtest/config";
 import type {
   PartialResult,
   SpeedSample,
   SpeedTestResult,
   SpeedTestRunPhase,
   SpeedTestState,
-} from "@lightspeed/core";
+} from "@comet-speedtest/core";
 import { useMemo } from "react";
 
 import type { ActivePhase, MetricValues } from "../components/MetricTiles";

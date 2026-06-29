@@ -1,3 +1,3 @@
 /// <reference types="vite/client" />
 
-declare module "@lightspeed/ui/styles.css";
+declare module "@comet-speedtest/ui/styles.css";

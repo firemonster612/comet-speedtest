@@ -22,7 +22,7 @@ describe("loadProductionConfig", () => {
 
     const config = await loadProductionConfig();
 
-    expect(config.diagnostics.source).toBe("/lightspeed.config.json");
+    expect(config.diagnostics.source).toBe("/comet.config.json");
     expect(config.targets.download).toBe("http://localhost:3000/download.bin");
     expect(config.test.download.workers).toBe(4);
   });

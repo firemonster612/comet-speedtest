@@ -1,6 +1,6 @@
-import { Label } from "@lightspeed/ui/components/ui/label";
-import { Separator } from "@lightspeed/ui/components/ui/separator";
-import { cn } from "@lightspeed/ui/lib/utils";
+import { Label } from "@comet-speedtest/ui/components/ui/label";
+import { Separator } from "@comet-speedtest/ui/components/ui/separator";
+import { cn } from "@comet-speedtest/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import { useMemo } from "react";
 

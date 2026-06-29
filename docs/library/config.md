@@ -1,6 +1,6 @@
-# @lightspeed/config
+# @comet-speedtest/config
 
-`@lightspeed/config` owns the JSON-compatible runtime config used by the
+`@comet-speedtest/config` owns the JSON-compatible runtime config used by the
 production app and by custom clients.
 
 It covers:
@@ -14,13 +14,13 @@ It covers:
 ## Install
 
 ```sh
-pnpm add @lightspeed/config
+pnpm add @comet-speedtest/config
 ```
 
 ## Minimal Config
 
 ```ts
-import { normalizeConfig } from "@lightspeed/config";
+import { normalizeConfig } from "@comet-speedtest/config";
 
 const config = normalizeConfig({
   targets: {
@@ -35,7 +35,7 @@ const config = normalizeConfig({
 ## Validation
 
 ```ts
-import { validateConfig } from "@lightspeed/config";
+import { validateConfig } from "@comet-speedtest/config";
 
 const validation = validateConfig(runtimeConfig);
 
@@ -57,10 +57,10 @@ normalizeConfig(runtimeConfig, { strict: true });
 ## Loading A Config File
 
 ```ts
-import { loadAndNormalizeConfig } from "@lightspeed/config";
+import { loadAndNormalizeConfig } from "@comet-speedtest/config";
 
 const config = await loadAndNormalizeConfig({
-  url: "/lightspeed.config.json",
+  url: "/comet.config.json",
 });
 ```
 
@@ -71,7 +71,7 @@ caller owns cancellation.
 const controller = new AbortController();
 
 const config = await loadAndNormalizeConfig({
-  url: "/lightspeed.config.json",
+  url: "/comet.config.json",
   signal: controller.signal,
 });
 ```
@@ -104,7 +104,7 @@ const config = normalizeConfig({
 });
 ```
 
-The production app uses `@lightspeed/core/diagnostics` to select a profile, then
+The production app uses `@comet-speedtest/core/diagnostics` to select a profile, then
 calls `normalizeConfigWithTargets` to run against the chosen targets.
 
 ## Phase Selection
@@ -134,10 +134,10 @@ Callers can override this for one run through `engine.run({ selection })`.
 ## Exporting Config
 
 ```ts
-import { exportConfig } from "@lightspeed/config";
+import { exportConfig } from "@comet-speedtest/config";
 
 const json = exportConfig(config);
 ```
 
 `exportConfig` returns formatted JSON with a trailing newline, ready to write as
-`lightspeed.config.json`.
+`comet.config.json`.

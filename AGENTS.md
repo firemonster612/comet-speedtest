@@ -1,6 +1,6 @@
-# What lightspeed is
+# What Comet is
 
-The Lightspeed project is meant to be both a core library and an optional production-ready application.
+The Comet project is meant to be both a core library and an optional production-ready application.
 
 The core library is meant as a building block for YOUR speed test client. It facilitates the hard work of speed testing and gets you 95% of the way to somthing that fits your needs exactly. You only need to write the extra 5% yourself. This allows you to not worry about the algorithm you should use, browser compatibility, and/or any strange edge cases, all you need to worry about are things specific to your use case such as UI or extra logic.
 

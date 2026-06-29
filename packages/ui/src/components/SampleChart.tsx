@@ -1,4 +1,4 @@
-import type { SpeedSample } from "@lightspeed/core";
+import type { SpeedSample } from "@comet-speedtest/core";
 import { type PointerEvent, useId, useState } from "react";
 
 import { selectChartSamples } from "../lib/chartSamples";

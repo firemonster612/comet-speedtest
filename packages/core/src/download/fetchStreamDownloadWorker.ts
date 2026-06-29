@@ -2,7 +2,7 @@ import { runMeasurementWorker } from "../workers/workerRuntime";
 
 function cacheBusted(target: string, runId: string, workerId: string): string {
   const url = new URL(target);
-  url.searchParams.set("lightspeedRun", runId);
+  url.searchParams.set("cometRun", runId);
   url.searchParams.set("worker", workerId);
   url.searchParams.set("t", String(Date.now()));
   return url.toString();

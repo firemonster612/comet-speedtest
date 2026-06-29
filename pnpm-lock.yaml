@@ -138,13 +138,13 @@ importers:
 
   apps/playground:
     dependencies:
-      '@lightspeed/config':
+      '@comet-speedtest/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@lightspeed/core':
+      '@comet-speedtest/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@lightspeed/ui':
+      '@comet-speedtest/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       lucide-react:
@@ -172,13 +172,13 @@ importers:
 
   apps/production:
     dependencies:
-      '@lightspeed/config':
+      '@comet-speedtest/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@lightspeed/core':
+      '@comet-speedtest/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@lightspeed/ui':
+      '@comet-speedtest/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       lucide-react:
@@ -215,7 +215,7 @@ importers:
 
   packages/core:
     dependencies:
-      '@lightspeed/config':
+      '@comet-speedtest/config':
         specifier: workspace:*
         version: link:../config
     devDependencies:
@@ -231,10 +231,10 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.6.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@lightspeed/config':
+      '@comet-speedtest/config':
         specifier: workspace:*
         version: link:../config
-      '@lightspeed/core':
+      '@comet-speedtest/core':
         specifier: workspace:*
         version: link:../core
       class-variance-authority:

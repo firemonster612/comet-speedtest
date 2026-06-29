@@ -13,14 +13,14 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "pnpm --filter @lightspeed/production build && pnpm --filter @lightspeed/production preview --host 127.0.0.1 --port 4173",
+        "pnpm --filter @comet-speedtest/production build && pnpm --filter @comet-speedtest/production preview --host 127.0.0.1 --port 4173",
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
       url: "http://127.0.0.1:4173/",
     },
     {
       command:
-        "pnpm --filter @lightspeed/playground build && pnpm --filter @lightspeed/playground preview --host 127.0.0.1 --port 4174",
+        "pnpm --filter @comet-speedtest/playground build && pnpm --filter @comet-speedtest/playground preview --host 127.0.0.1 --port 4174",
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
       url: "http://127.0.0.1:4174/",

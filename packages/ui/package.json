@@ -1,5 +1,5 @@
 {
-  "name": "@lightspeed/ui",
+  "name": "@comet-speedtest/ui",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
@@ -38,8 +38,8 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
-    "@lightspeed/config": "workspace:*",
-    "@lightspeed/core": "workspace:*",
+    "@comet-speedtest/config": "workspace:*",
+    "@comet-speedtest/core": "workspace:*",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "lucide-react": "catalog:",

@@ -17,7 +17,7 @@ export interface QualityScore {
 }
 
 export interface ConnectionQualityResult {
-  schemaVersion: "lightspeed-quality/v1";
+  schemaVersion: "comet-quality/v1";
   overall: QualityScore;
   webBrowsing: QualityScore;
   gaming: QualityScore;

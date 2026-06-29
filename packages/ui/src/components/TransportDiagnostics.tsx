@@ -1,4 +1,4 @@
-import type { SpeedTestResult } from "@lightspeed/core";
+import type { SpeedTestResult } from "@comet-speedtest/core";
 
 export function TransportDiagnostics({ result }: { result: SpeedTestResult | null }) {
   if (!result) {

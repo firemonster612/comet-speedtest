@@ -2,24 +2,27 @@ import {
   normalizeConfigWithTargets,
   type NormalizedSpeedTestConfig,
   type RuntimeTheme,
-} from "@lightspeed/config";
-import { createResultRecord, type SpeedTestResult } from "@lightspeed/core";
-import { selectTarget, type TargetProfileSummary } from "@lightspeed/core/diagnostics";
+} from "@comet-speedtest/config";
+import { createResultRecord, type SpeedTestResult } from "@comet-speedtest/core";
+import {
+  selectTarget,
+  type TargetProfileSummary,
+} from "@comet-speedtest/core/diagnostics";
 import {
   ErrorNotice,
-  LightspeedThemeProvider,
+  CometThemeProvider,
   SpeedTestWidget,
   ThemeToggle,
   useColorScheme,
-} from "@lightspeed/ui";
+} from "@comet-speedtest/ui";
 import {
   Alert,
   AlertAction,
   AlertDescription,
-} from "@lightspeed/ui/components/ui/alert";
-import { Button } from "@lightspeed/ui/components/ui/button";
+} from "@comet-speedtest/ui/components/ui/alert";
+import { Button } from "@comet-speedtest/ui/components/ui/button";
 
-import "@lightspeed/ui/styles.css";
+import "@comet-speedtest/ui/styles.css";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -54,7 +57,7 @@ export function ProductionApp() {
   );
   // The app owns root theming (the shell — gradient, toggle, loading and error
   // states — is themed even before the widget mounts), so it resolves the theme
-  // here and hands it to LightspeedThemeProvider rather than to the widget.
+  // here and hands it to CometThemeProvider rather than to the widget.
   const themed = useMemo<RuntimeTheme>(
     () => ({ ...(readyConfig?.theme ?? {}), colorScheme: scheme }),
     [readyConfig, scheme],
@@ -165,7 +168,7 @@ export function ProductionApp() {
     state.status === "error" ? `${state.error.name}:${state.error.message}` : null;
 
   return (
-    <LightspeedThemeProvider theme={themed}>
+    <CometThemeProvider theme={themed}>
       <main className="production-shell relative flex min-h-screen flex-col items-center bg-background px-4 py-6 sm:px-6 sm:py-10">
         <div
           aria-hidden="true"
@@ -225,7 +228,7 @@ export function ProductionApp() {
           ) : null}
         </div>
       </main>
-    </LightspeedThemeProvider>
+    </CometThemeProvider>
   );
 }
 

@@ -1,5 +1,5 @@
 {
-  "name": "@lightspeed/playground",
+  "name": "@comet-speedtest/playground",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -11,9 +11,9 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@lightspeed/config": "workspace:*",
-    "@lightspeed/core": "workspace:*",
-    "@lightspeed/ui": "workspace:*",
+    "@comet-speedtest/config": "workspace:*",
+    "@comet-speedtest/core": "workspace:*",
+    "@comet-speedtest/ui": "workspace:*",
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"

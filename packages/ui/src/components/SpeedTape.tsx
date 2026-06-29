@@ -1,4 +1,4 @@
-import type { SpeedSample } from "@lightspeed/core";
+import type { SpeedSample } from "@comet-speedtest/core";
 
 import { useCountUp } from "../hooks/useCountUp";
 import { speedParts } from "../lib/format";

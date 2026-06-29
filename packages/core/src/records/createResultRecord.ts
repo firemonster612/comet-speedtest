@@ -42,7 +42,7 @@ export function createResultRecord<TContext = Record<string, unknown>>(
       : "not-present";
 
   return {
-    schemaVersion: "lightspeed-result-record/v1",
+    schemaVersion: "comet-result-record/v1",
     createdAt: options.createdAt ?? new Date().toISOString(),
     result: cloneResult(result, stripSamples),
     ...(options.selectedTarget ? { selectedTarget: options.selectedTarget } : {}),

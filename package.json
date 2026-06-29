@@ -1,12 +1,21 @@
 {
-  "name": "lightspeed",
+  "name": "comet-speedtest",
   "private": true,
+  "description": "Browser-first speed test toolkit and deployable production app.",
+  "homepage": "https://github.com/firemonster612/comet-speedtest#readme",
+  "bugs": {
+    "url": "https://github.com/firemonster612/comet-speedtest/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/firemonster612/comet-speedtest.git"
+  },
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @lightspeed/playground dev",
-    "dev:prod": "pnpm --filter @lightspeed/production dev",
-    "dev:playground": "pnpm --filter @lightspeed/playground dev",
+    "dev": "pnpm --filter @comet-speedtest/playground dev",
+    "dev:prod": "pnpm --filter @comet-speedtest/production dev",
+    "dev:playground": "pnpm --filter @comet-speedtest/playground dev",
     "build": "pnpm -r build",
     "lint": "oxlint 'apps/*/src' 'apps/*/vite.config.ts' 'apps/*/vitest.config.ts' 'packages/*/src' 'packages/*/vitest.config.ts' 'tests/browser' playwright.config.ts oxlint.config.ts --ignore-pattern '**/dist/**' --ignore-pattern '**/node_modules/**'",
     "lint:fix": "oxlint --fix 'apps/*/src' 'apps/*/vite.config.ts' 'apps/*/vitest.config.ts' 'packages/*/src' 'packages/*/vitest.config.ts' 'tests/browser' playwright.config.ts oxlint.config.ts --ignore-pattern '**/dist/**' --ignore-pattern '**/node_modules/**'",

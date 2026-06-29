@@ -1,4 +1,4 @@
-import type { NormalizedSamplingConfig } from "@lightspeed/config";
+import type { NormalizedSamplingConfig } from "@comet-speedtest/config";
 
 import type {
   SpeedSample,

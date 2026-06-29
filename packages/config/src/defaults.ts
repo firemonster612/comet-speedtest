@@ -2,7 +2,7 @@ import type { NormalizedSpeedTestConfig, RuntimeConfig } from "./runtimeConfig";
 
 export const defaultRuntimeConfig: RuntimeConfig = {
   brand: {
-    name: "Lightspeed",
+    name: "Comet",
     logoUrl: "",
     faviconUrl: "",
     serverLabel: "",

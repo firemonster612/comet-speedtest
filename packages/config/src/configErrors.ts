@@ -31,7 +31,7 @@ export function configInvalidError(
     .join(" ");
   return new RuntimeConfigError(
     "config-invalid",
-    issueText || "Invalid Lightspeed config.",
+    issueText || "Invalid Comet config.",
     {
       diagnostics: {
         validation: {

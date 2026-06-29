@@ -1,5 +1,5 @@
 {
-  "name": "@lightspeed/core",
+  "name": "@comet-speedtest/core",
   "version": "0.1.0",
   "description": "Browser-first speed-test engine, result records, diagnostics, and quality scoring.",
   "keywords": [
@@ -11,7 +11,16 @@
     "speed-test",
     "throughput"
   ],
+  "homepage": "https://github.com/firemonster612/comet-speedtest/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/firemonster612/comet-speedtest/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/firemonster612/comet-speedtest.git",
+    "directory": "packages/core"
+  },
   "files": [
     "README.md",
     "LICENSE",
@@ -49,7 +58,7 @@
     "typecheck": "tsc -b --pretty false && tsc -p tsconfig.test.json --pretty false"
   },
   "dependencies": {
-    "@lightspeed/config": "workspace:*"
+    "@comet-speedtest/config": "workspace:*"
   },
   "devDependencies": {
     "typescript": "catalog:",

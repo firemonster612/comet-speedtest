@@ -1,6 +1,6 @@
-# @lightspeed/config
+# @comet-speedtest/config
 
-Runtime config helpers for Lightspeed.
+Runtime config helpers for Comet.
 
 The package owns the JSON-compatible deployment input used by the production app
 and by library callers: defaults, validation, normalization, config loading, test
@@ -9,13 +9,13 @@ phase selection, and export helpers.
 ## Install
 
 ```sh
-pnpm add @lightspeed/config
+pnpm add @comet-speedtest/config
 ```
 
 ## Basic Use
 
 ```ts
-import { loadAndNormalizeConfig, validateConfig } from "@lightspeed/config";
+import { loadAndNormalizeConfig, validateConfig } from "@comet-speedtest/config";
 
 const validation = validateConfig({
   targets: {
@@ -29,7 +29,7 @@ if (!validation.ok) {
 }
 
 const config = await loadAndNormalizeConfig({
-  url: "/lightspeed.config.json",
+  url: "/comet.config.json",
 });
 
 console.log(config.targets.download);
@@ -38,7 +38,7 @@ console.log(config.targets.download);
 ## Target Profiles
 
 ```ts
-import { normalizeConfig } from "@lightspeed/config";
+import { normalizeConfig } from "@comet-speedtest/config";
 
 const config = normalizeConfig({
   targets: {
@@ -87,4 +87,4 @@ const config = normalizeConfig({
 Known malformed sections fail validation. Unknown fields are kept as warnings in
 normal mode and become errors only when strict validation is requested.
 
-Full project docs live in `docs/library/config.md` in the Lightspeed repository.
+Full project docs live in `docs/library/config.md` in the Comet repository.

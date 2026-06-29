@@ -1,4 +1,4 @@
-import type { RuntimeTargets } from "@lightspeed/config";
+import type { RuntimeTargets } from "@comet-speedtest/config";
 
 export type TargetSelectionStrategy = "lowest-latency" | "forced";
 

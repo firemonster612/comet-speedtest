@@ -1,4 +1,4 @@
-import type { LatencyMethod } from "@lightspeed/config";
+import type { LatencyMethod } from "@comet-speedtest/config";
 
 import type { ThroughputPhase } from "../results/resultTypes";
 

@@ -3,9 +3,12 @@ import type {
   RuntimeConfig,
   RuntimeTestSelectionConfig,
   SpeedTestRunPhase,
-} from "@lightspeed/config";
+} from "@comet-speedtest/config";
 
-export type { RuntimeTestSelectionConfig, SpeedTestRunPhase } from "@lightspeed/config";
+export type {
+  RuntimeTestSelectionConfig,
+  SpeedTestRunPhase,
+} from "@comet-speedtest/config";
 
 export type SpeedTestPhase = "idle-latency" | "download" | "upload" | "finalize";
 export type ThroughputPhase = "download" | "upload";

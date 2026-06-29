@@ -14,7 +14,7 @@ const minimal = {
   },
 };
 
-describe("@lightspeed/config", () => {
+describe("@comet-speedtest/config", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -106,7 +106,7 @@ describe("@lightspeed/config", () => {
   it("rejects malformed object sections instead of normalizing defaults", () => {
     const result = validateConfig({
       ...minimal,
-      brand: "Lightspeed",
+      brand: "Comet",
       content: null,
       test: "fast",
       result: false,
@@ -518,12 +518,12 @@ describe("@lightspeed/config", () => {
     );
 
     const loaded = await loadRuntimeConfig({
-      url: "https://speed.example.test/lightspeed.config.json",
+      url: "https://speed.example.test/comet.config.json",
     });
 
     expect(loaded.targets.download).toBe("/speedtest/download/large.bin");
     expect(fetch).toHaveBeenCalledWith(
-      "https://speed.example.test/lightspeed.config.json",
+      "https://speed.example.test/comet.config.json",
       expect.objectContaining({
         headers: { accept: "application/json" },
       }),
@@ -540,7 +540,7 @@ describe("@lightspeed/config", () => {
 
     await expect(
       loadRuntimeConfig({
-        url: "https://speed.example.test/lightspeed.config.json",
+        url: "https://speed.example.test/comet.config.json",
       }),
     ).rejects.toMatchObject({
       code: "config-load-failed",

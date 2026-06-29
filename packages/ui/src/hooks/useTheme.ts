@@ -1,4 +1,4 @@
-import type { ColorScheme, RuntimeTheme } from "@lightspeed/config";
+import type { ColorScheme, RuntimeTheme } from "@comet-speedtest/config";
 import { useEffect, useState } from "react";
 
 import { applyTheme } from "../theme/applyTheme";
@@ -29,7 +29,7 @@ export function useApplyTheme(theme: RuntimeTheme | undefined): void {
   }, [theme]);
 }
 
-const DEFAULT_STORAGE_KEY = "lightspeed:color-scheme";
+const DEFAULT_STORAGE_KEY = "comet:color-scheme";
 
 /**
  * A persisted color-scheme override. Defaults to `fallback` (typically the

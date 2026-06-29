@@ -81,7 +81,7 @@ describe("createResultRecord", () => {
     });
 
     expect(record).toMatchObject({
-      schemaVersion: "lightspeed-result-record/v1",
+      schemaVersion: "comet-result-record/v1",
       createdAt: "2026-01-01T00:00:10.000Z",
       selectedTarget: { id: "dal", label: "Dallas" },
       context: { accountId: "acct-1" },

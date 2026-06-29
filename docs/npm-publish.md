@@ -2,10 +2,10 @@
 
 This repo publishes two packages:
 
-- `@lightspeed/config`
-- `@lightspeed/core`
+- `@comet-speedtest/config`
+- `@comet-speedtest/core`
 
-Publish `@lightspeed/config` first. `@lightspeed/core` depends on it.
+Publish `@comet-speedtest/config` first. `@comet-speedtest/core` depends on it.
 
 ## Before Publishing
 
@@ -13,14 +13,14 @@ Run these checks from the workspace root:
 
 ```sh
 pnpm check
-pnpm --filter @lightspeed/config pack --dry-run
-pnpm --filter @lightspeed/core pack --dry-run
-pnpm --filter @lightspeed/config publish --dry-run
-pnpm --filter @lightspeed/core publish --dry-run
+pnpm --filter @comet-speedtest/config pack --dry-run
+pnpm --filter @comet-speedtest/core pack --dry-run
+pnpm --filter @comet-speedtest/config publish --dry-run
+pnpm --filter @comet-speedtest/core publish --dry-run
 ```
 
 Also confirm that you are logged in to npm and that your npm account can publish
-to the `@lightspeed` scope:
+to the `@comet-speedtest` scope:
 
 ```sh
 pnpm whoami --registry https://registry.npmjs.org/
@@ -33,16 +33,16 @@ a dirty Git tree by default, including dry-runs that do not pass
 The scoped packages use `publishConfig.access = "public"`, so the first real
 publish should create public packages instead of private scoped packages.
 
-Once the public GitHub URL exists, add `repository`, `homepage`, and `bugs`
-fields to the two publishable package manifests before publishing.
+The publishable package manifests already include `repository`, `homepage`, and
+`bugs` metadata for `firemonster612/comet-speedtest`.
 
 ## Actual Publish
 
 Do not run these commands until the release is approved:
 
 ```sh
-pnpm --filter @lightspeed/config publish
-pnpm --filter @lightspeed/core publish
+pnpm --filter @comet-speedtest/config publish
+pnpm --filter @comet-speedtest/core publish
 ```
 
 After publishing, install both packages in a clean project and verify the same

@@ -10,7 +10,7 @@ The engine can run real browser worker transports or deterministic test adapters
 
 ## Decision
 
-Worker and measurement adapters remain internal to the engine implementation. Deterministic and synthetic adapters are exported only from `@lightspeed/core/testing`.
+Worker and measurement adapters remain internal to the engine implementation. Deterministic and synthetic adapters are exported only from `@comet-speedtest/core/testing`.
 
 ## Consequences
 

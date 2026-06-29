@@ -1,5 +1,5 @@
-import type { RuntimeConfig } from "@lightspeed/config";
-import { testSectionFields } from "@lightspeed/config";
+import type { RuntimeConfig } from "@comet-speedtest/config";
+import { testSectionFields } from "@comet-speedtest/config";
 
 import { type ConfigUpdater, Panel, SchemaField, SwitchField } from "./shared";
 

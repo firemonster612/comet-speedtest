@@ -51,7 +51,7 @@ test("production result submission posts once per completed run", async ({ page 
   await page.waitForTimeout(500);
   expect(submissionCount).toBe(1);
   expect(postedBody).toMatchObject({
-    schemaVersion: "lightspeed-result-record/v1",
+    schemaVersion: "comet-result-record/v1",
     result: { runId: expect.any(String) },
     privacy: { rawSamples: "included" },
   });
@@ -154,7 +154,7 @@ test("production applies theme variables from runtime config", async ({ page }) 
 test("production keeps long config errors within the viewport", async ({ page }) => {
   const longPath = `/fixture/${"download-segment-".repeat(40)}.bin`;
   const longUnknownField = `unexpected${"Field".repeat(80)}`;
-  await page.route("**/lightspeed.config.json", async (route) => {
+  await page.route("**/comet.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       json: {
@@ -198,7 +198,7 @@ async function routeFixtureSpeedTest(
     upload: "/fixture/upload",
     latency: "/fixture/latency",
   };
-  await page.route("**/lightspeed.config.json", async (route) => {
+  await page.route("**/comet.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       json: {

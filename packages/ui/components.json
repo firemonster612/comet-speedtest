@@ -11,11 +11,11 @@
     "prefix": ""
   },
   "aliases": {
-    "components": "@lightspeed/ui/components",
-    "utils": "@lightspeed/ui/lib/utils",
-    "ui": "@lightspeed/ui/components/ui",
-    "lib": "@lightspeed/ui/lib",
-    "hooks": "@lightspeed/ui/hooks"
+    "components": "@comet-speedtest/ui/components",
+    "utils": "@comet-speedtest/ui/lib/utils",
+    "ui": "@comet-speedtest/ui/components/ui",
+    "lib": "@comet-speedtest/ui/lib",
+    "hooks": "@comet-speedtest/ui/hooks"
   },
   "iconLibrary": "lucide"
 }

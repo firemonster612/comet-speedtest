@@ -1,4 +1,4 @@
-import type { RuntimeTheme, RuntimeThemePalette } from "@lightspeed/config";
+import type { RuntimeTheme, RuntimeThemePalette } from "@comet-speedtest/config";
 
 import { defaultThemeTokens } from "./tokens";
 
