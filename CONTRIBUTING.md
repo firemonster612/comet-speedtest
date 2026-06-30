@@ -13,22 +13,18 @@ Use pnpm. Do not use npm for this repo.
 
 ```sh
 pnpm install
-pnpm check
 ```
-
-`pnpm check` runs formatting, linting, type checks, unit tests, builds, and
-browser tests. Please run it before you call a change done.
 
 ## Local Development
 
 ```sh
-pnpm dev             # playground
+pnpm dev             # playground (prod app but with dev tools sidebar for debugging)
 pnpm dev:prod        # production app
-pnpm build
+pnpm build          # bundle all the packages into their respective `dist` folders
+pnpm check          # run typecheck, lint, formatter check and unit tests
 ```
 
 Vite and Vitest read workspace source through `workspace-vite-aliases.ts`.
-Published package entry points still point at `dist`.
 
 ## Pull Requests
 
@@ -51,7 +47,3 @@ source-vs-dist wiring.
 
 The project vocabulary in `CONTEXT.md` is meant to stay current. If you add a
 new domain term, add it there too.
-
-## Security
-
-Do not report security problems in public issues. Follow `SECURITY.md`.
