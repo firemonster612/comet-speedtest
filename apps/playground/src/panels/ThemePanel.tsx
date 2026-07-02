@@ -4,7 +4,7 @@ import type {
   RuntimeThemePalette,
 } from "@comet-speedtest/config";
 import { defaultRuntimeConfig } from "@comet-speedtest/config";
-import { Input } from "@comet-speedtest/ui/components/ui/input";
+import { Input } from "@comet-speedtest/internal-ui/components/ui/input";
 import { Moon, Sun } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 

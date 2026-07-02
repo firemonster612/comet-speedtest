@@ -8,6 +8,9 @@ test-results/
 
 apps/*/dist/
 packages/*/dist/
+internal/*/dist/
+packages/*/dist-app/
+packages/*/dist-templates/
 .playwright-mcp/
 
 # impeccable live-mode runtime (server journals, session state); design.json is kept

@@ -7,16 +7,16 @@ const workspaceRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export const workspaceSourceAliases: AliasOptions = [
   {
-    find: /^@comet-speedtest\/ui\/styles\.css$/,
-    replacement: resolve(workspaceRoot, "packages/ui/src/styles.css"),
+    find: /^@comet-speedtest\/internal-ui\/styles\.css$/,
+    replacement: resolve(workspaceRoot, "internal/ui/src/styles.css"),
   },
   {
-    find: /^@comet-speedtest\/ui\/(.+)$/,
-    replacement: resolve(workspaceRoot, "packages/ui/src/$1"),
+    find: /^@comet-speedtest\/internal-ui\/(.+)$/,
+    replacement: resolve(workspaceRoot, "internal/ui/src/$1"),
   },
   {
-    find: "@comet-speedtest/ui",
-    replacement: resolve(workspaceRoot, "packages/ui/src/index.ts"),
+    find: "@comet-speedtest/internal-ui",
+    replacement: resolve(workspaceRoot, "internal/ui/src/index.ts"),
   },
   {
     find: /^@comet-speedtest\/core\/diagnostics$/,

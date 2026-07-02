@@ -3,7 +3,10 @@
 Comet currently has two release tracks:
 
 - Published library Modules: `@comet-speedtest/core` and `@comet-speedtest/config`.
-- Repository-shipped app source: the Production app in `apps/production`.
+- Published distribution Modules: `@comet-speedtest/production` and
+  `@comet-speedtest/create-app`.
+- Repository-owned app implementation: the Production app in `apps/production`
+  and private UI in `internal/ui`.
 
 ## Published Libraries
 
@@ -16,21 +19,34 @@ Adapters do not become part of the default production Interface by accident.
 defaults, validation, normalization, and export helpers for apps and library
 callers.
 
-These are the only packages intended for npm publication in the current release
-scope.
+These are the library packages intended for custom speed test clients.
+
+## Published Distribution Modules
+
+`@comet-speedtest/production` is the deployable Production app Module. Its
+Interface is the `comet-speedtest` command set plus the `public/` runtime files a
+generated deployment owns. It does not export React components, UI primitives, or
+hooks.
+
+`@comet-speedtest/create-app` is the Create command Module. It creates three
+project shapes: a Deployable configured app, a Source app, or a minimal
+core-library example. It assembles generated project files from canonical repo
+source during package build instead of maintaining a duplicate template source
+tree.
 
 ## Private Workspace Modules
 
 The workspace root remains private and exists for repository coordination,
 scripts, and dependency catalogs.
 
-`@comet-speedtest/ui` remains private/internal for now. It is an app-facing React UI
-Module used by the Production app and Playground, not a public package with a
-stable npm Interface.
+`@comet-speedtest/internal-ui` remains private/internal. It is an app-facing React
+UI Module used by the Production app and Playground, not a public package with a
+stable npm Interface. Source app generation copies its implementation into
+`src/comet-ui`, after which the generated project owns that source.
 
-`apps/production` remains private. The Production app is included in GitHub as
-deployable source/template for teams that want a branded page, rather than as an
-npm package.
+`apps/production` remains private. The Production app is canonical first-party
+source that builds the bundled static app shipped by
+`@comet-speedtest/production`.
 
 `apps/playground` remains private. The Playground is the engineering console for
 tuning Runtime config, endpoints, theme, sampling, latency, throughput, and

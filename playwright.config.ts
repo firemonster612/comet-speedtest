@@ -13,7 +13,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "pnpm --filter @comet-speedtest/production build && pnpm --filter @comet-speedtest/production preview --host 127.0.0.1 --port 4173",
+        "pnpm --filter @comet-speedtest/production-app build && pnpm --filter @comet-speedtest/production build && node packages/production/bin/comet-speedtest.js build --root tests/browser/fixtures/production-deployable && node packages/production/bin/comet-speedtest.js preview --root tests/browser/fixtures/production-deployable --host 127.0.0.1 --port 4173",
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
       url: "http://127.0.0.1:4173/",

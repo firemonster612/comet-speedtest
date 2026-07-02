@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@comet-speedtest/internal-ui/components",
+    "utils": "@comet-speedtest/internal-ui/lib/utils",
+    "ui": "@comet-speedtest/internal-ui/components/ui",
+    "lib": "@comet-speedtest/internal-ui/lib",
+    "hooks": "@comet-speedtest/internal-ui/hooks"
+  },
+  "iconLibrary": "lucide"
+}

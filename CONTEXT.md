@@ -11,6 +11,9 @@ Comet is a browser-first speed test toolkit with two deliverables: a core librar
 - **Transport**: the browser mechanism used for a throughput phase, such as fetch response streaming, fetch upload streaming, or XHR upload progress.
 - **Result record**: the portable result payload created from a completed speed test result for storage or submission. It may preserve or strip raw samples.
 - **Production app**: the deployable customer-facing app that loads `/comet.config.json`, selects a target profile when configured, runs the widget, and optionally submits a result record.
+- **Create command**: the project generator that creates a deployable configured app, a source app based on the Comet UI, or a minimal core-library example without requiring users to clone the monorepo.
+- **Deployable configured app**: a small generated project that owns `public/comet.config.json` and brand assets while delegating app serving and builds to `@comet-speedtest/production`.
+- **Source app**: a generated standalone Vite app that receives a copied, local `src/comet-ui` implementation based on the first-party UI. The user owns that source after creation.
 - **Playground**: the engineering console for tuning runtime config, endpoints, theme, sampling, latency, throughput, and diagnostics.
 
 ## Architectural Vocabulary
@@ -19,3 +22,4 @@ Comet is a browser-first speed test toolkit with two deliverables: a core librar
 - Diagnostic and test-only seams live on explicit subpaths so production callers do not learn internal transport, sampling, or synthetic adapter details by accident.
 - Runtime config compatibility is strict for malformed known sections and lenient for unknown fields unless strict mode is requested.
 - Workspace apps and tests consume source through Vite/Vitest aliases; published package interfaces continue to point at `dist`.
+- First-party UI lives in an internal private module. It is never a public npm interface; it is either bundled behind the production app commands or copied into a source app.

@@ -10,7 +10,36 @@ The production app, on the other hand, is for those who don't want to build thei
 
 ### Production app
 
-Deploy the Comet production app as a static site and serve a runtime config file at `/comet.config.json`. The app loads that config at startup, uses the configured speed-test endpoints and target profiles, runs the speed test widget, and can submit a result record when result submission is configured. Also host speed test endpoints on the same domain (for CORS, unless you have a custom CORS setup) such as:
+Create a deployable Comet project:
+
+```sh
+pnpm create @comet-speedtest/app my-speedtest
+cd my-speedtest
+pnpm dev
+```
+
+Choose **Deployable configured app** when you want a branded speed test page
+without app source code. The generated project owns `public/comet.config.json`
+and brand assets, while `@comet-speedtest/production` provides the
+`comet-speedtest` commands:
+
+```sh
+pnpm check
+pnpm build
+pnpm preview
+```
+
+Choose **Source app based on the Comet UI** when you like the production UI and
+want to own and modify a copied source tree. That mode creates a standalone Vite
+app with the UI copied into `src/comet-ui`; it does not depend on a public UI
+package.
+
+Deploy the built app as a static site and serve a runtime config file at
+`/comet.config.json`. The app loads that config at startup, uses the configured
+speed-test endpoints and target profiles, runs the speed test widget, and can
+submit a result record when result submission is configured. Also host speed test
+endpoints on the same domain (for CORS, unless you have a custom CORS setup)
+such as:
 
 - `/speedtest/download/large.bin`
 - `/speedtest/upload`
@@ -63,7 +92,12 @@ if (outcome.ok) {
   validation, normalization, and export helpers.
 - `packages/core` (published library): measurement engine, transport resolution,
   sampling math, latency aggregation, worker protocol, and diagnostics.
-- `packages/ui` (private internal design system, not published): source-owned
+- `packages/production` (published deployable app commands): the
+  `comet-speedtest` CLI and bundled static production app used by deployable
+  generated projects.
+- `packages/create-app` (published project generator): creates deployable,
+  source, or core-library projects without a maintained template source tree.
+- `internal/ui` (private internal design system, not published): source-owned
   React UI primitives, controller hook, widget, result display, charts, errors,
   and diagnostics.
 - `apps/production` (private deployable source/template): static

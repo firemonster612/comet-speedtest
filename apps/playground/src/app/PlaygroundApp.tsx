@@ -6,21 +6,25 @@ import {
   type RuntimeConfig,
   type RuntimeTheme,
 } from "@comet-speedtest/config";
-import { ErrorNotice, CometThemeProvider, SpeedTestWidget } from "@comet-speedtest/ui";
+import {
+  ErrorNotice,
+  CometThemeProvider,
+  SpeedTestWidget,
+} from "@comet-speedtest/internal-ui";
 import {
   Alert,
   AlertAction,
   AlertDescription,
-} from "@comet-speedtest/ui/components/ui/alert";
-import { Button } from "@comet-speedtest/ui/components/ui/button";
+} from "@comet-speedtest/internal-ui/components/ui/alert";
+import { Button } from "@comet-speedtest/internal-ui/components/ui/button";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@comet-speedtest/ui/components/ui/tabs";
+} from "@comet-speedtest/internal-ui/components/ui/tabs";
 
-import "@comet-speedtest/ui/styles.css";
+import "@comet-speedtest/internal-ui/styles.css";
 import {
   Braces,
   Gauge,

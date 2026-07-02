@@ -14,15 +14,15 @@ import {
   SpeedTestWidget,
   ThemeToggle,
   useColorScheme,
-} from "@comet-speedtest/ui";
+} from "@comet-speedtest/internal-ui";
 import {
   Alert,
   AlertAction,
   AlertDescription,
-} from "@comet-speedtest/ui/components/ui/alert";
-import { Button } from "@comet-speedtest/ui/components/ui/button";
+} from "@comet-speedtest/internal-ui/components/ui/alert";
+import { Button } from "@comet-speedtest/internal-ui/components/ui/button";
 
-import "@comet-speedtest/ui/styles.css";
+import "@comet-speedtest/internal-ui/styles.css";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
