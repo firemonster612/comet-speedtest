@@ -1,0 +1,11 @@
+{
+  "targets": {
+    "download": "/speedtest/download/large.bin",
+    "upload": "/speedtest/upload",
+    "latency": "/speedtest/latency"
+  },
+  "result": {
+    "submitUrl": null,
+    "includeRawSamples": false
+  }
+}

@@ -5,17 +5,17 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "packages/ui/src/styles.css",
+    "css": "internal/ui/src/styles.css",
     "baseColor": "slate",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "@comet-speedtest/ui/components",
-    "utils": "@comet-speedtest/ui/lib/utils",
-    "ui": "@comet-speedtest/ui/components/ui",
-    "lib": "@comet-speedtest/ui/lib",
-    "hooks": "@comet-speedtest/ui/hooks"
+    "components": "@comet-speedtest/internal-ui/components",
+    "utils": "@comet-speedtest/internal-ui/lib/utils",
+    "ui": "@comet-speedtest/internal-ui/components/ui",
+    "lib": "@comet-speedtest/internal-ui/lib",
+    "hooks": "@comet-speedtest/internal-ui/hooks"
   },
   "iconLibrary": "lucide"
 }

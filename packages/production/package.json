@@ -1,0 +1,45 @@
+{
+  "name": "@comet-speedtest/production",
+  "version": "0.1.0",
+  "description": "Deployable Comet production speed test app commands and static bundle.",
+  "keywords": [
+    "browser",
+    "internet-speed-test",
+    "network",
+    "speed-test",
+    "static-site"
+  ],
+  "homepage": "https://github.com/firemonster612/comet-speedtest#readme",
+  "bugs": {
+    "url": "https://github.com/firemonster612/comet-speedtest/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/firemonster612/comet-speedtest.git",
+    "directory": "packages/production"
+  },
+  "bin": {
+    "comet-speedtest": "./bin/comet-speedtest.js"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "bin/**/*.js",
+    "dist-app/**/*"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "node scripts/prepare-dist-app.mjs",
+    "prepack": "pnpm --filter @comet-speedtest/production-app build && pnpm build",
+    "test": "node --check bin/comet-speedtest.js && node --check scripts/prepare-dist-app.mjs",
+    "typecheck": "node --check bin/comet-speedtest.js && node --check scripts/prepare-dist-app.mjs"
+  },
+  "dependencies": {
+    "@comet-speedtest/config": "workspace:*"
+  }
+}

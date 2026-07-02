@@ -3,7 +3,7 @@
   "references": [
     { "path": "./packages/config" },
     { "path": "./packages/core" },
-    { "path": "./packages/ui" },
+    { "path": "./internal/ui" },
     { "path": "./apps/production" },
     { "path": "./apps/playground" }
   ]

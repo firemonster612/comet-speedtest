@@ -3,11 +3,11 @@ import {
   Alert,
   AlertAction,
   AlertDescription,
-} from "@comet-speedtest/ui/components/ui/alert";
-import { Badge } from "@comet-speedtest/ui/components/ui/badge";
-import { Button } from "@comet-speedtest/ui/components/ui/button";
-import { Input } from "@comet-speedtest/ui/components/ui/input";
-import { Textarea } from "@comet-speedtest/ui/components/ui/textarea";
+} from "@comet-speedtest/internal-ui/components/ui/alert";
+import { Badge } from "@comet-speedtest/internal-ui/components/ui/badge";
+import { Button } from "@comet-speedtest/internal-ui/components/ui/button";
+import { Input } from "@comet-speedtest/internal-ui/components/ui/input";
+import { Textarea } from "@comet-speedtest/internal-ui/components/ui/textarea";
 import { RefreshCcw, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 

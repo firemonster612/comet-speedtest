@@ -1,7 +1,10 @@
 import type { RuntimeConfig } from "@comet-speedtest/config";
-import { Alert, AlertDescription } from "@comet-speedtest/ui/components/ui/alert";
-import { Button } from "@comet-speedtest/ui/components/ui/button";
-import { Input } from "@comet-speedtest/ui/components/ui/input";
+import {
+  Alert,
+  AlertDescription,
+} from "@comet-speedtest/internal-ui/components/ui/alert";
+import { Button } from "@comet-speedtest/internal-ui/components/ui/button";
+import { Input } from "@comet-speedtest/internal-ui/components/ui/input";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 

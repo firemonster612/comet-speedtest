@@ -1,0 +1,44 @@
+{
+  "name": "@comet-speedtest/create-app",
+  "version": "0.1.0",
+  "description": "Create deployable, source, or core-library Comet speed test projects.",
+  "keywords": [
+    "create",
+    "internet-speed-test",
+    "speed-test",
+    "starter"
+  ],
+  "homepage": "https://github.com/firemonster612/comet-speedtest#readme",
+  "bugs": {
+    "url": "https://github.com/firemonster612/comet-speedtest/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/firemonster612/comet-speedtest.git",
+    "directory": "packages/create-app"
+  },
+  "bin": {
+    "create-comet-speedtest-app": "./bin/create-comet-speedtest-app.js"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "bin/**/*.js",
+    "dist-templates/**/*"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "node scripts/prepare-templates.mjs",
+    "prepack": "pnpm build",
+    "test": "node --check bin/create-comet-speedtest-app.js && node --check scripts/prepare-templates.mjs",
+    "typecheck": "node --check bin/create-comet-speedtest-app.js && node --check scripts/prepare-templates.mjs"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.6.0"
+  }
+}

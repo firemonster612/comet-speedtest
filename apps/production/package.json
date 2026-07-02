@@ -1,5 +1,5 @@
 {
-  "name": "@comet-speedtest/production",
+  "name": "@comet-speedtest/production-app",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -13,7 +13,7 @@
   "dependencies": {
     "@comet-speedtest/config": "workspace:*",
     "@comet-speedtest/core": "workspace:*",
-    "@comet-speedtest/ui": "workspace:*",
+    "@comet-speedtest/internal-ui": "workspace:*",
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
