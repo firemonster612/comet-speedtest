@@ -24,6 +24,7 @@ import type {
   ThroughputPhase,
   Unsubscribe,
   LatencyResult,
+  LatencySample,
 } from "../results/resultTypes";
 import { detectCapabilities } from "../transport/capabilities";
 import { type ResolvedTransports, resolveTransports } from "../transport/registry";
@@ -167,36 +168,32 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
 
       this.emit({ type: "start", runId, config: this.config });
 
+      const adapter = this.measurementAdapter();
       // Reachability gate. A fast probe of each target the run will use fails the
       // run immediately with a clear message when a target can't be reached at all
       // — instead of every phase silently producing zero-throughput windows and
       // timeout-as-latency. Opt-out via `test.latency.reachabilityCheck`. Skipped
       // under the synthetic/injected adapter (offline tests) so only real network
       // runs pay for it.
-      if (
-        this.config.test.latency.reachabilityCheck &&
-        !this.adapter &&
-        !this.shouldUseSyntheticAdapter()
-      ) {
+      if (this.config.test.latency.reachabilityCheck && !adapter) {
         await this.assertTargetReachable(selection, controller.signal);
       }
 
       if (selection.phases.includes("idle-latency")) {
         this.enterPhase("idle-latency", controller.signal);
-        const idle = await runIdleLatency(
-          this.config.targets.latency,
-          this.config.test.latency,
-          (sample) => {
-            // A failed probe's "latency" is just the time until it errored or
-            // timed out — never surface that as a reading. The aggregate already
-            // drops !ok samples; keep the live tile honest too.
-            if (sample.ok) {
-              this.state = { ...this.state, latestLatencySample: sample };
-            }
-            this.emit({ type: "latency-sample", sample });
-          },
-          controller.signal,
-        );
+        const emit = (sample: LatencySample): void => this.emitLatency(sample);
+        const idle = await (adapter
+          ? adapter.runIdleLatency({
+              config: this.config,
+              signal: controller.signal,
+              emit,
+            })
+          : runIdleLatency(
+              this.config.targets.latency,
+              this.config.test.latency,
+              emit,
+              controller.signal,
+            ));
         idleResult = idle;
         this.emit({ type: "phase-complete", phase: "idle-latency", result: idle });
       }
@@ -424,9 +421,7 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
     loadedLatency: boolean,
     signal: AbortSignal,
   ) {
-    const adapter =
-      this.adapter ??
-      (this.shouldUseSyntheticAdapter() ? new SyntheticMeasurementAdapter() : null);
+    const adapter = this.measurementAdapter();
     // Closed once the attempt settles: a late worker message or adapter callback
     // must not reach listeners after `phase-complete` or `phase-reset`.
     let open = true;
@@ -521,6 +516,14 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
     }
   }
 
+  /** The adapter that replaces the network for this run, or null for a real run. */
+  private measurementAdapter(): DeterministicPhaseAdapter | null {
+    return (
+      this.adapter ??
+      (this.shouldUseSyntheticAdapter() ? new SyntheticMeasurementAdapter() : null)
+    );
+  }
+
   private shouldUseSyntheticAdapter(): boolean {
     const process = (globalThis as { process?: { env?: { NODE_ENV?: string } } })
       .process;
@@ -554,8 +557,9 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
   private emitLatency(
     sample: Extract<SpeedTestEvent, { type: "latency-sample" }>["sample"],
   ): void {
-    // Failed loaded-latency probes carry the timeout duration, not a real
-    // reading — keep them out of the live tile (the aggregate drops them too).
+    // A failed probe's "latency" is just the time until it errored or timed
+    // out, not a reading — keep it out of the live tile (the aggregate drops
+    // it too).
     if (sample.ok) {
       this.state = { ...this.state, latestLatencySample: sample };
     }

@@ -35,8 +35,8 @@
   "scripts": {
     "build": "node scripts/prepare-templates.mjs",
     "prepack": "pnpm build",
-    "test": "node --check bin/create-comet-speedtest-app.js && node --check scripts/prepare-templates.mjs",
-    "typecheck": "node --check bin/create-comet-speedtest-app.js && node --check scripts/prepare-templates.mjs"
+    "test": "pnpm build && node --test test/*.test.js",
+    "typecheck": "node --check bin/create-comet-speedtest-app.js && node --check bin/endpoint-setup.js && node --check scripts/prepare-templates.mjs"
   },
   "dependencies": {
     "@clack/prompts": "^1.6.0"

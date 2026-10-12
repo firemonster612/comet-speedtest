@@ -55,6 +55,7 @@ describe("SpeedTestEngine lifecycle", () => {
   it("keeps a run started from a result listener stoppable", async () => {
     let runs = 0;
     const adapter: DeterministicPhaseAdapter = {
+      runIdleLatency: (options) => synthetic.runIdleLatency(options),
       runPhase(options) {
         return runs === 1 ? synthetic.runPhase(options) : rejectOnAbort(options.signal);
       },
@@ -151,6 +152,7 @@ describe("SpeedTestEngine lifecycle", () => {
     const listenerBug = new Error("listener bug");
     let runs = 0;
     const adapter: DeterministicPhaseAdapter = {
+      runIdleLatency: (options) => synthetic.runIdleLatency(options),
       runPhase(options) {
         return runs === 1 ? synthetic.runPhase(options) : rejectOnAbort(options.signal);
       },
@@ -189,14 +191,13 @@ describe("SpeedTestEngine lifecycle", () => {
     expect(errors).toEqual(["aborted"]);
   });
 
+  const failingAdapter: DeterministicPhaseAdapter = {
+    runIdleLatency: (options) => synthetic.runIdleLatency(options),
+    runPhase: () => Promise.reject(new Error("HTTP 500")),
+  };
   it.each([
     ["result", synthetic, true, "complete"],
-    [
-      "error",
-      { runPhase: () => Promise.reject(new Error("HTTP 500")) },
-      false,
-      "error",
-    ],
+    ["error", failingAdapter, false, "error"],
   ] as const)(
     "keeps the outcome when a listener for %s throws",
     async (eventType, adapter, ok, status) => {
@@ -295,6 +296,7 @@ describe("SpeedTestEngine runtime upload fallback", () => {
   } {
     return {
       uploadCalls: 0,
+      runIdleLatency: (options) => synthetic.runIdleLatency(options),
       async runPhase(options) {
         if (options.phase !== "upload" || ++this.uploadCalls > 1) {
           return synthetic.runPhase(options);
@@ -367,6 +369,7 @@ describe("SpeedTestEngine runtime upload fallback", () => {
     const listenerBug = new Error("consumer chart bug");
     let uploadCalls = 0;
     const adapter: DeterministicPhaseAdapter = {
+      runIdleLatency: (options) => synthetic.runIdleLatency(options),
       runPhase(options) {
         uploadCalls += options.phase === "upload" ? 1 : 0;
         return synthetic.runPhase(options);
@@ -407,6 +410,7 @@ describe("SpeedTestEngine runtime upload fallback", () => {
   it("keeps trying fetch-stream upload after a run where the xhr-chunked retry failed too", async () => {
     let uploadCalls = 0;
     const adapter: DeterministicPhaseAdapter = {
+      runIdleLatency: (options) => synthetic.runIdleLatency(options),
       runPhase(options) {
         if (options.phase === "upload" && ++uploadCalls <= 2) {
           return Promise.reject(new Error("upload-0: Upload failed with HTTP 503"));

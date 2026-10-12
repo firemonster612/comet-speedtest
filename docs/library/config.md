@@ -279,6 +279,11 @@ import { normalizeConfigWithTargets } from "@comet-speedtest/config";
 const configForRun = normalizeConfigWithTargets(config, selection.targets);
 ```
 
+The engine never applies `targetProfiles` or `targetSelection` itself: a config
+passed straight to `createSpeedTest` measures the top-level fallback `targets`.
+[A custom client, end to end](./README.md#a-custom-client-end-to-end) shows the
+complete selection step.
+
 ## Phase selection
 
 `test.selection` sets which phases run by default and whether latency is sampled

@@ -1,11 +1,21 @@
 import { spawnSync } from "node:child_process";
-import { copyFile, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { existsSync, realpathSync } from "node:fs";
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Verifies what users install: packs the publishable packages, compiles a consumer
-// against the packed config and core, and builds a project from every create-app mode.
+// Verifies what users install: packs the publishable packages from a clean state,
+// compiles a consumer against the packed config and core, checks their declaration
+// maps resolve, and builds a project from every create-app mode.
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageNames = {
@@ -21,6 +31,7 @@ const createAppModes = [
   { name: "source", args: ["--source"], scripts: ["check"] },
   { name: "core", args: ["--core"], scripts: ["check"] },
 ];
+const libraryPackages = [packageNames.config, packageNames.core];
 const consumerEntryPoints = [
   "@comet-speedtest/config",
   "@comet-speedtest/core",
@@ -30,13 +41,13 @@ const consumerEntryPoints = [
 
 const tempRoot = await mkdtemp(resolve(tmpdir(), "comet-package-smoke-"));
 try {
-  run("pnpm", [
-    "--filter",
-    packageNames.config,
-    "--filter",
-    packageNames.core,
-    "build",
-  ]);
+  // A clean checkout has no library dist, so packing must build it via prepack.
+  for (const name of ["config", "core"]) {
+    await rm(resolve(workspaceRoot, "packages", name, "dist"), {
+      force: true,
+      recursive: true,
+    });
+  }
   const tarballs = await packPackages(resolve(tempRoot, "tarballs"));
   await checkConsumer(resolve(tempRoot, "consumer"), tarballs);
   const createAppRunner = resolve(tempRoot, "create-app-runner");
@@ -105,6 +116,30 @@ async function checkConsumer(root, tarballs) {
   run("pnpm", ["exec", "tsc", "-p", resolve(root, "tsconfig.json")]);
   const imports = consumerEntryPoints.map((entry) => `await import("${entry}");`);
   run("node", ["--input-type=module", "--eval", imports.join(" ")], root);
+  for (const name of libraryPackages) {
+    await checkDeclarationMaps(realpathSync(resolve(root, "node_modules", name)));
+  }
+}
+
+// Every declaration map must point at a source file shipped in the package, so
+// editors can navigate from the installed types to the original TypeScript.
+async function checkDeclarationMaps(packageRoot) {
+  const maps = (await readdir(packageRoot, { recursive: true })).filter((path) =>
+    path.endsWith(".d.ts.map"),
+  );
+  if (maps.length === 0) {
+    throw new Error(`${packageRoot} ships no declaration maps.`);
+  }
+  for (const map of maps) {
+    const mapPath = resolve(packageRoot, map);
+    const { sourceRoot = "", sources } = JSON.parse(await readFile(mapPath, "utf8"));
+    for (const source of sources) {
+      const sourcePath = resolve(dirname(mapPath), sourceRoot, source);
+      if (!existsSync(sourcePath)) {
+        throw new Error(`${mapPath} points at missing source ${sourcePath}.`);
+      }
+    }
+  }
 }
 
 async function checkGeneratedProject(createAppRunner, root, mode, tarballs) {

@@ -28,7 +28,10 @@
     "dist/**/*.d.ts.map",
     "dist/**/*.js",
     "dist/**/*.js.map",
-    "!dist/**/__tests__/**"
+    "!dist/**/__tests__/**",
+    "src",
+    "!src/**/__tests__/**",
+    "!src/**/*.test.ts"
   ],
   "type": "module",
   "sideEffects": false,
@@ -54,6 +57,7 @@
   },
   "scripts": {
     "build": "tsc -b && node ../../scripts/fix-dist-imports.mjs dist",
+    "prepack": "pnpm --filter @comet-speedtest/config build && pnpm build && node ../../scripts/check-package-entries.mjs",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty false && tsc -p tsconfig.test.json --pretty false"
   },

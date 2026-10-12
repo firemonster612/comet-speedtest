@@ -603,8 +603,8 @@ for a completed run.
 ## Testing your integration
 
 For deterministic tests, import from `@comet-speedtest/core/testing`. The
-synthetic adapter produces fixed measurements so a test does not depend on real
-network behavior:
+synthetic adapter replaces the network, so a test runs in Node or a browser
+without real endpoints:
 
 ```ts
 import {
@@ -617,13 +617,59 @@ const engine = createTestSpeedTest(config, {
 });
 
 const outcome = await engine.run();
-// outcome.ok is true with stable, predictable numbers
+// outcome.ok is true, and the same config always gives the same measurements.
 ```
 
+With a measurement adapter, the engine:
+
+- takes idle latency, download, upload, and latency under load from the adapter
+  and never calls `fetch` or starts a Worker;
+- skips the reachability check;
+- produces identical measurements for identical config, because the synthetic
+  adapter runs on a virtual clock. `runId`, `startedAt`, and `completedAt` still
+  differ per run.
+
 `createTestSpeedTest` has the same surface as `createSpeedTest` plus the
-`measurementAdapter` option. Keep it in test code: the root `createSpeedTest`
-intentionally does not accept an adapter, so production paths cannot quietly run
-against synthetic data.
+`measurementAdapter` option. It reports every transport as supported unless you
+pass `capabilities`, so a test resolves the same transports as a modern browser
+whatever runtime it runs in. Pass a full `capabilities` report to test a
+fallback. This one makes upload use `xhr-chunked`:
+
+```ts
+const engine = createTestSpeedTest(config, {
+  measurementAdapter: new SyntheticMeasurementAdapter(),
+  capabilities: {
+    fetchResponseStreaming: true,
+    fetchRequestStreaming: false,
+    xhrUpload: true,
+    workers: true,
+    abortController: true,
+  },
+});
+```
+
+To simulate a failure, implement `DeterministicPhaseAdapter` yourself and
+delegate to the synthetic adapter for the parts you don't change. An adapter
+provides both `runIdleLatency` and `runPhase`:
+
+```ts
+import type { DeterministicPhaseAdapter } from "@comet-speedtest/core/testing";
+
+const synthetic = new SyntheticMeasurementAdapter();
+const failingUpload: DeterministicPhaseAdapter = {
+  runIdleLatency: (options) => synthetic.runIdleLatency(options),
+  runPhase: (options) =>
+    options.phase === "upload"
+      ? Promise.reject(new Error("HTTP 503"))
+      : synthetic.runPhase(options),
+};
+// createTestSpeedTest(config, { measurementAdapter: failingUpload }).run()
+// resolves to { ok: false, error: { code: "upload-failed" } }.
+```
+
+Keep these helpers in test code: the root `createSpeedTest` intentionally does
+not accept an adapter, so production paths cannot quietly run against synthetic
+data.
 
 ## Lower-level diagnostics
 

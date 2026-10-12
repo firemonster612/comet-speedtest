@@ -76,11 +76,40 @@ purpose.
 This is the full path from config file to submitted result. Each step is covered
 in depth in the guides above.
 
-```ts
-import { loadAndNormalizeConfig } from "@comet-speedtest/config";
-import { createResultRecord, createSpeedTest } from "@comet-speedtest/core";
+`createSpeedTest` measures the `targets` in the config it is given. It does not
+read `targetProfiles` or `targetSelection`, so choosing a profile is the
+caller's job: pick one with `selectTarget`, then rebuild the config around its
+endpoints with `normalizeConfigWithTargets`. The production app does the same.
 
-const config = await loadAndNormalizeConfig({ url: "/comet.config.json" });
+```ts
+import {
+  loadAndNormalizeConfig,
+  normalizeConfigWithTargets,
+  type NormalizedSpeedTestConfig,
+} from "@comet-speedtest/config";
+import { createResultRecord, createSpeedTest } from "@comet-speedtest/core";
+import { selectTarget } from "@comet-speedtest/core/diagnostics";
+
+async function applyTargetSelection(config: NormalizedSpeedTestConfig) {
+  if (config.targetProfiles.length === 0) {
+    return { config, selectedTarget: undefined };
+  }
+  const selection = await selectTarget({
+    targets: config.targetProfiles,
+    strategy: config.targetSelection?.strategy ?? "lowest-latency",
+    ...(config.targetSelection?.targetId
+      ? { targetId: config.targetSelection.targetId }
+      : {}),
+    timeoutMs: config.test.latency.timeoutMs,
+  });
+  // The record keeps the profile's id, label and metadata, not its URLs.
+  const { targets, ...selectedTarget } = selection.selected;
+  return { config: normalizeConfigWithTargets(config, targets), selectedTarget };
+}
+
+const { config, selectedTarget } = await applyTargetSelection(
+  await loadAndNormalizeConfig({ url: "/comet.config.json" }),
+);
 const engine = createSpeedTest(config);
 
 const stopSamples = engine.on("sample", (event) => {
@@ -104,7 +133,10 @@ if (!outcome.ok) {
   renderResult(result);
 
   if (config.result.submitUrl) {
-    const record = createResultRecord(result, { rawSamples: "strip" });
+    const record = createResultRecord(result, {
+      rawSamples: "strip",
+      ...(selectedTarget ? { selectedTarget } : {}),
+    });
     await fetch(config.result.submitUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -113,6 +145,10 @@ if (!outcome.ok) {
   }
 }
 ```
+
+`selectTarget` throws `TargetSelectionError` when it cannot pick a profile: every
+latency probe failed, or a forced `targetId` matches no profile. Its
+`diagnostics` lists each candidate's result.
 
 `run()` only throws if you start a second run while one is active, so guard
 against double-clicks instead of using `try/catch` for normal measurement
