@@ -15,3 +15,6 @@ packages/*/dist-templates/
 
 # impeccable live-mode runtime (server journals, session state); design.json is kept
 **/.impeccable/live/
+
+# local agent scratch space
+.scratch/

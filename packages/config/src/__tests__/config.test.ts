@@ -4,6 +4,7 @@ import {
   exportConfig,
   loadRuntimeConfig,
   normalizeConfig,
+  RuntimeConfigError,
   validateConfig,
 } from "../index";
 
@@ -557,6 +558,169 @@ describe("@comet-speedtest/config", () => {
     await expect(loadRuntimeConfig({ url: "/missing.json" })).rejects.toMatchObject({
       code: "config-load-failed",
       diagnostics: { status: 404, url: "/missing.json" },
+    });
+  });
+
+  it("surfaces network failures with config-load-failed", async () => {
+    const networkError = new TypeError("Failed to fetch");
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(networkError);
+
+    const loading = loadRuntimeConfig({ url: "/comet.config.json" });
+
+    await expect(loading).rejects.toBeInstanceOf(RuntimeConfigError);
+    await expect(loading).rejects.toMatchObject({
+      code: "config-load-failed",
+      cause: networkError,
+      diagnostics: { url: "/comet.config.json" },
+    });
+  });
+
+  it("lets a caller's abort through instead of reporting a load failure", async () => {
+    const controller = new AbortController();
+    const abortError = new DOMException("Aborted", "AbortError");
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      controller.abort();
+      throw abortError;
+    });
+
+    await expect(loadRuntimeConfig({ signal: controller.signal })).rejects.toBe(
+      abortError,
+    );
+  });
+
+  it("lets a caller's abort during the body read through", async () => {
+    const controller = new AbortController();
+    const abortError = new DOMException("Aborted", "AbortError");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => {
+        controller.abort();
+        throw abortError;
+      },
+    } as unknown as Response);
+
+    await expect(loadRuntimeConfig({ signal: controller.signal })).rejects.toBe(
+      abortError,
+    );
+  });
+
+  it.each([
+    ["a function", { onPick: () => "iad" }],
+    [
+      "an array with extra keys",
+      { tags: Object.assign(["a"], { onPick: () => "iad" }) },
+    ],
+    [
+      "a sparse array with an extra key",
+      { tags: Object.assign(new Array(1), { extra: "x" }) },
+    ],
+    [
+      "a cycle",
+      (() => {
+        const metadata: Record<string, unknown> = {};
+        metadata.self = metadata;
+        return metadata;
+      })(),
+    ],
+  ])("rejects target profile metadata containing %s", (_, metadata) => {
+    const validation = validateConfig({
+      ...minimal,
+      targetProfiles: [{ id: "iad", targets: minimal.targets, metadata }],
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toContainEqual(
+      expect.objectContaining({ path: "targetProfiles.0.metadata", severity: "error" }),
+    );
+  });
+
+  it("accepts metadata that repeats an object without a cycle or leaves fields undefined", () => {
+    const shared = { region: "us-east" };
+    const validation = validateConfig({
+      ...minimal,
+      targetProfiles: [
+        {
+          id: "iad",
+          targets: minimal.targets,
+          metadata: { a: shared, b: [shared], optional: undefined },
+        },
+      ],
+    });
+
+    expect(validation.ok).toBe(true);
+  });
+
+  it("rejects URLs that cannot be resolved against the base URL", () => {
+    const config = {
+      targets: { download: "http://[", upload: "/upload", latency: "//[" },
+      targetProfiles: [
+        { id: "iad", targets: { download: "/download", upload: "http://[" } },
+      ],
+      result: { submitUrl: "https://[::1" },
+    };
+
+    const result = validateConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "targets.download",
+          message: expect.stringContaining('"http://["') as string,
+        }),
+        expect.objectContaining({ path: "targets.latency" }),
+        expect.objectContaining({ path: "targetProfiles.0.targets.upload" }),
+        expect.objectContaining({ path: "result.submitUrl" }),
+      ]),
+    );
+    expect(() =>
+      normalizeConfig(config, { baseUrl: "https://speed.example.test/" }),
+    ).toThrowError(
+      expect.objectContaining({
+        name: "RuntimeConfigError",
+        code: "config-invalid",
+        message: expect.stringContaining("targets.download") as string,
+      }),
+    );
+  });
+
+  it("rejects theme fields of the wrong type", () => {
+    const result = validateConfig({
+      ...minimal,
+      theme: {
+        primaryColor: 42,
+        light: { textColor: false },
+        dark: { borderColor: {} },
+        fontFamily: [],
+        radius: 8,
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.map((issue) => issue.path).sort()).toEqual([
+      "theme.dark.borderColor",
+      "theme.fontFamily",
+      "theme.light.textColor",
+      "theme.primaryColor",
+      "theme.radius",
+    ]);
+  });
+
+  it("does not freeze caller-owned target profile metadata", () => {
+    const metadata = { region: "us-east", tags: ["primary"] };
+    const normalized = normalizeConfig({
+      ...minimal,
+      targetProfiles: [
+        { id: "iad", metadata, targets: { download: "/d", upload: "/u" } },
+      ],
+    });
+
+    metadata.region = "us-west";
+    metadata.tags.push("edited");
+
+    expect(Object.isFrozen(normalized.targetProfiles[0]?.metadata)).toBe(true);
+    expect(normalized.targetProfiles[0]?.metadata).toEqual({
+      region: "us-east",
+      tags: ["primary"],
     });
   });
 

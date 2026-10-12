@@ -66,7 +66,10 @@ if (!validation.ok) {
 }
 ```
 
-`validateConfig` accepts `unknown` and never throws.
+`validateConfig` accepts `unknown` and never throws. It also checks that every
+URL resolves against a base URL. Pass `validateConfig(input, { baseUrl })` to use
+the same base you will pass to `normalizeConfig`; it defaults to
+`location.href` in a browser and `http://localhost/` elsewhere.
 
 Use `normalizeConfig(config, options?)` when you are ready to run:
 
