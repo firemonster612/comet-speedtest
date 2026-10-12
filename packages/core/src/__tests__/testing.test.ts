@@ -1,8 +1,14 @@
 import type { RuntimeConfig } from "@comet-speedtest/config";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { RunOutcome } from "../results/resultTypes";
-import { createTestSpeedTest, SyntheticMeasurementAdapter } from "../testing";
+import type { LatencySample, RunOutcome } from "../results/resultTypes";
+import {
+  createTestSpeedTest,
+  type DeterministicPhaseAdapter,
+  type IdleLatencyOptions,
+  SyntheticMeasurementAdapter,
+} from "../testing";
+import { detectCapabilities } from "../transport/capabilities";
 
 // Default test settings, so idle latency, loaded latency and both throughput
 // phases all run.
@@ -53,5 +59,58 @@ describe("@comet-speedtest/core/testing", () => {
     expect(result.latency.underDownloadLoad).not.toBeNull();
     expect(result.download?.bitsPerSecond).toBeGreaterThan(0);
     expect(result.upload?.bitsPerSecond).toBeGreaterThan(0);
+  });
+
+  it("gives each engine its own default capability report", async () => {
+    const adapter = new SyntheticMeasurementAdapter();
+    const first = measurements(
+      await createTestSpeedTest(config, { measurementAdapter: adapter }).run(),
+    );
+    first.diagnostics.capabilityReport.workers = false;
+
+    const second = await createTestSpeedTest(config, {
+      measurementAdapter: adapter,
+    }).run();
+
+    expect(second.ok).toBe(true);
+  });
+
+  it("detects capabilities when no adapter replaces the network", async () => {
+    const outcome = await createTestSpeedTest(config).run();
+
+    const diagnostics = outcome.ok
+      ? outcome.result.diagnostics
+      : outcome.partial?.diagnostics;
+    expect(diagnostics?.capabilityReport).toEqual(detectCapabilities());
+  });
+
+  it("ignores idle latency samples an adapter emits after the phase settles", async () => {
+    const synthetic = new SyntheticMeasurementAdapter();
+    let lateEmit: ((sample: LatencySample) => void) | undefined;
+    const adapter: DeterministicPhaseAdapter = {
+      runIdleLatency(options: IdleLatencyOptions) {
+        lateEmit = options.emit;
+        return synthetic.runIdleLatency(options);
+      },
+      runPhase: (options) => synthetic.runPhase(options),
+    };
+    const engine = createTestSpeedTest(config, { measurementAdapter: adapter });
+    const received: number[] = [];
+    engine.on("latency-sample", (event) => received.push(event.sample.latencyMs));
+    await engine.run();
+    const countAfterRun = received.length;
+    expect(lateEmit).toBeDefined();
+    expect(countAfterRun).toBeGreaterThan(0);
+
+    lateEmit?.({
+      phase: "idle",
+      startedAtMs: 0,
+      endedAtMs: 999,
+      latencyMs: 999,
+      ok: true,
+    });
+
+    expect(received).toHaveLength(countAfterRun);
+    expect(engine.getState().latestLatencySample?.latencyMs).not.toBe(999);
   });
 });

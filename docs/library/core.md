@@ -630,9 +630,12 @@ With a measurement adapter, the engine:
   differ per run.
 
 `createTestSpeedTest` has the same surface as `createSpeedTest` plus the
-`measurementAdapter` option. It reports every transport as supported unless you
-pass `capabilities`, so a test resolves the same transports as a modern browser
-whatever runtime it runs in. Pass a full `capabilities` report to test a
+`measurementAdapter` option. With an adapter it reports every transport as
+supported unless you pass `capabilities`, so a test resolves the same transports
+as a modern browser whatever runtime it runs in. Without an adapter the run uses
+the network, so capabilities are detected as usual. Adapter authors can type
+their methods with the exported `IdleLatencyOptions`, `PhaseOptions` and
+`PhaseEventSink`. Pass a full `capabilities` report to test a
 fallback. This one makes upload use `xhr-chunked`:
 
 ```ts

@@ -62,11 +62,13 @@ main().catch((error) => {
 });
 
 async function main() {
-  const cli = parseArgs(process.argv.slice(2));
-  if (cli.help) {
+  const args = process.argv.slice(2);
+  // Help wins over any other flag, including ones that would fail to parse.
+  if (args.includes("--help") || args.includes("-h")) {
     console.log(helpText);
     return;
   }
+  const cli = parseArgs(args);
   const prompt = createPrompt();
   const projectName = cli.target ?? (await promptText(prompt, "Project name"));
   if (!projectName) {
@@ -127,7 +129,6 @@ async function main() {
 function parseArgs(args) {
   const cli = {
     git: undefined,
-    help: false,
     install: undefined,
     mode: undefined,
     nginx: undefined,
@@ -140,8 +141,6 @@ function parseArgs(args) {
     if (arg === "--") {
       // Package-manager `create` commands may forward the separator itself.
       continue;
-    } else if (arg === "--help" || arg === "-h") {
-      cli.help = true;
     } else if (arg === "--source") {
       cli.mode = "source";
     } else if (arg === "--deploy" || arg === "--deployable") {

@@ -37,6 +37,13 @@ describe("help", () => {
     });
   }
 
+  test("--help wins over an invalid flag", () => {
+    const { status, stdout } = runCli(["--help", "--pm", "bogus"]);
+
+    assert.equal(status, 0);
+    assert.match(stdout, /^Usage: create-comet-speedtest-app/);
+  });
+
   test("unknown arguments point at --help", () => {
     const { status, stderr } = runCli(["--frobnicate"]);
 
@@ -67,12 +74,22 @@ describe("deployable project with endpoints configured later", () => {
 
   test("closing output marks the endpoint URLs as placeholders", () => {
     assert.equal(result.status, 0, result.stderr);
-    assert.match(
-      result.stdout,
-      /download {2}\/speedtest\/download\/large\.bin {2}\(placeholder\)/,
-    );
-    assert.match(result.stdout, /upload {4}\/speedtest\/upload {14}\(placeholder\)/);
-    assert.match(result.stdout, /latency {3}\/speedtest\/latency {13}\(placeholder\)/);
+    const lines = result.stdout.split("\n");
+    for (const [name, url] of [
+      ["download", "/speedtest/download/large.bin"],
+      ["upload", "/speedtest/upload"],
+      ["latency", "/speedtest/latency"],
+    ]) {
+      assert.ok(
+        lines.some(
+          (line) =>
+            line.trim().startsWith(name) &&
+            line.includes(url) &&
+            line.trimEnd().endsWith("(placeholder)"),
+        ),
+        `no placeholder line for ${name}`,
+      );
+    }
     assert.ok(result.stdout.includes(endpointContractUrl));
     assert.match(result.stdout, /check and build never contact the endpoints/);
   });

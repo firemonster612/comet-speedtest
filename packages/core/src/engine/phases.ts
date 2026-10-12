@@ -47,18 +47,22 @@ export interface PhaseEventSink {
  * phase from the adapter and skips the reachability probe.
  */
 export interface DeterministicPhaseAdapter {
-  runIdleLatency(options: {
-    config: NormalizedSpeedTestConfig;
-    signal: AbortSignal;
-    emit: (sample: LatencySample) => void;
-  }): Promise<LatencyResult>;
-  runPhase(options: {
-    phase: ThroughputPhase;
-    config: NormalizedSpeedTestConfig;
-    signal: AbortSignal;
-    loadedLatency: boolean;
-    emit: PhaseEventSink;
-  }): Promise<ThroughputPhaseResult>;
+  runIdleLatency(options: IdleLatencyOptions): Promise<LatencyResult>;
+  runPhase(options: PhaseOptions): Promise<ThroughputPhaseResult>;
+}
+
+export interface IdleLatencyOptions {
+  config: NormalizedSpeedTestConfig;
+  signal: AbortSignal;
+  emit: (sample: LatencySample) => void;
+}
+
+export interface PhaseOptions {
+  phase: ThroughputPhase;
+  config: NormalizedSpeedTestConfig;
+  signal: AbortSignal;
+  loadedLatency: boolean;
+  emit: PhaseEventSink;
 }
 
 /** Idle probes take 12, 13 and 14 ms in turn, so jitter is non-zero. */
@@ -74,11 +78,7 @@ function yieldToEventLoop(): Promise<void> {
  * results however fast the host runs.
  */
 export class SyntheticMeasurementAdapter implements DeterministicPhaseAdapter {
-  async runIdleLatency(options: {
-    config: NormalizedSpeedTestConfig;
-    signal: AbortSignal;
-    emit: (sample: LatencySample) => void;
-  }): Promise<LatencyResult> {
+  async runIdleLatency(options: IdleLatencyOptions): Promise<LatencyResult> {
     const latencyConfig = options.config.test.latency;
     const latency = new LatencyCollector(options.emit);
     const requests = latencyConfig.enabled ? latencyConfig.idleRequests : 0;
@@ -101,13 +101,7 @@ export class SyntheticMeasurementAdapter implements DeterministicPhaseAdapter {
     return latency.aggregate();
   }
 
-  async runPhase(options: {
-    phase: ThroughputPhase;
-    config: NormalizedSpeedTestConfig;
-    signal: AbortSignal;
-    loadedLatency: boolean;
-    emit: PhaseEventSink;
-  }): Promise<ThroughputPhaseResult> {
+  async runPhase(options: PhaseOptions): Promise<ThroughputPhaseResult> {
     const sampling = options.config.test.sampling;
     let now = 0;
     const run = new MeasurementRun(

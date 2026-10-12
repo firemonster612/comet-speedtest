@@ -181,19 +181,7 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
 
       if (selection.phases.includes("idle-latency")) {
         this.enterPhase("idle-latency", controller.signal);
-        const emit = (sample: LatencySample): void => this.emitLatency(sample);
-        const idle = await (adapter
-          ? adapter.runIdleLatency({
-              config: this.config,
-              signal: controller.signal,
-              emit,
-            })
-          : runIdleLatency(
-              this.config.targets.latency,
-              this.config.test.latency,
-              emit,
-              controller.signal,
-            ));
+        const idle = await this.runIdleLatency(controller.signal);
         idleResult = idle;
         this.emit({ type: "phase-complete", phase: "idle-latency", result: idle });
       }
@@ -412,6 +400,29 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
 
   getState(): SpeedTestState {
     return structuredCloneSafe(this.state);
+  }
+
+  private async runIdleLatency(signal: AbortSignal): Promise<LatencyResult> {
+    const adapter = this.measurementAdapter();
+    // Closed once the phase settles, like the throughput sink below.
+    let open = true;
+    const emit = (sample: LatencySample): void => {
+      if (open) {
+        this.emitLatency(sample);
+      }
+    };
+    try {
+      return await (adapter
+        ? adapter.runIdleLatency({ config: this.config, signal, emit })
+        : runIdleLatency(
+            this.config.targets.latency,
+            this.config.test.latency,
+            emit,
+            signal,
+          ));
+    } finally {
+      open = false;
+    }
   }
 
   private async runThroughput(
