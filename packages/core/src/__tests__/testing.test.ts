@@ -75,13 +75,19 @@ describe("@comet-speedtest/core/testing", () => {
     expect(second.ok).toBe(true);
   });
 
-  it("detects capabilities when no adapter replaces the network", async () => {
-    const outcome = await createTestSpeedTest(config).run();
+  it("uses the network and detected capabilities when no adapter is passed", async () => {
+    const fetch = vi.fn(() => Promise.reject(new Error("offline")));
+    vi.stubGlobal("fetch", fetch);
 
-    const diagnostics = outcome.ok
-      ? outcome.result.diagnostics
-      : outcome.partial?.diagnostics;
-    expect(diagnostics?.capabilityReport).toEqual(detectCapabilities());
+    const outcome = await createTestSpeedTest(config).run({
+      selection: { phases: ["idle-latency"] },
+    });
+
+    expect(fetch).toHaveBeenCalled();
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok ? null : outcome.partial?.diagnostics.capabilityReport).toEqual(
+      detectCapabilities(),
+    );
   });
 
   it("ignores idle latency samples an adapter emits after the phase settles", async () => {

@@ -33,7 +33,6 @@ import {
   PartialThroughputPhaseError,
   type DeterministicPhaseAdapter,
   type PhaseEventSink,
-  SyntheticMeasurementAdapter,
   type ThroughputPhaseResult,
   runWorkerPhase,
 } from "./phases";
@@ -528,21 +527,9 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
   }
 
   /** The adapter that replaces the network for this run, or null for a real run. */
+  /** Only an explicit adapter (from `@comet-speedtest/core/testing`) replaces the network. */
   private measurementAdapter(): DeterministicPhaseAdapter | null {
-    return (
-      this.adapter ??
-      (this.shouldUseSyntheticAdapter() ? new SyntheticMeasurementAdapter() : null)
-    );
-  }
-
-  private shouldUseSyntheticAdapter(): boolean {
-    const process = (globalThis as { process?: { env?: { NODE_ENV?: string } } })
-      .process;
-    return (
-      typeof Worker !== "function" &&
-      typeof process === "object" &&
-      process.env?.NODE_ENV === "test"
-    );
+    return this.adapter ?? null;
   }
 
   /** Phase boundary: a listener may have stopped the run since the last one. */
