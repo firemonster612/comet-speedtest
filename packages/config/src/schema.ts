@@ -11,7 +11,12 @@ import { defaultRuntimeConfig } from "./defaults";
  */
 export type TestSection = "download" | "upload" | "sampling" | "latency";
 
-export type RuntimeFieldKind = "string" | "nullableString" | "boolean" | "object";
+export type RuntimeFieldKind =
+  | "string"
+  | "nullableString"
+  | "nullableUrl"
+  | "boolean"
+  | "object";
 
 export type RuntimeObjectSection = "brand" | "content" | "result";
 
@@ -104,7 +109,7 @@ export const runtimeFieldSchema: readonly RuntimeFieldSpec[] = [
     section: "result",
     key: "submitUrl",
     label: "Submit URL",
-    kind: "nullableString",
+    kind: "nullableUrl",
   },
   {
     section: "result",
@@ -113,6 +118,19 @@ export const runtimeFieldSchema: readonly RuntimeFieldSpec[] = [
     kind: "boolean",
   },
 ];
+
+/** Color fields shared by `theme.light`, `theme.dark`, and the legacy flat `theme` palette. */
+export const themePaletteKeys = [
+  "primaryColor",
+  "accentColor",
+  "backgroundColor",
+  "surfaceColor",
+  "textColor",
+  "mutedTextColor",
+  "borderColor",
+] as const;
+
+export const themeStyleKeys = ["fontFamily", "radius"] as const;
 
 export const testFieldSchema: readonly TestFieldSpec[] = [
   // Download throughput

@@ -12,8 +12,9 @@ import type {
   RuntimeTargetSelectionConfig,
   RuntimeTargets,
 } from "./runtimeConfig";
-import { runtimeSectionKeys, testSectionKeys } from "./schema";
+import { runtimeSectionKeys, testSectionKeys, themePaletteKeys } from "./schema";
 import { normalizeTestSelection } from "./selection";
+import { defaultBaseUrl } from "./urls";
 import { validateConfig } from "./validateRuntimeConfig";
 
 function deepFreeze<T>(value: T): T {
@@ -49,6 +50,7 @@ function fnv1a(input: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
+// Only called after validateConfig has checked that the value resolves against this baseUrl.
 function absoluteUrl(value: string, baseUrl: string): string {
   return new URL(value, baseUrl).toString();
 }
@@ -71,7 +73,8 @@ function normalizeTargetProfiles(
   return (config.targetProfiles ?? []).map((profile) => ({
     id: profile.id,
     ...(profile.label ? { label: profile.label } : {}),
-    ...(profile.metadata ? { metadata: profile.metadata } : {}),
+    // Copy so freezing the normalized config leaves the caller's object writable.
+    ...(profile.metadata ? { metadata: structuredClone(profile.metadata) } : {}),
     targets: normalizeTargets(profile.targets, baseUrl),
   }));
 }
@@ -97,16 +100,6 @@ function pickKnown(value: unknown, keys: readonly string[]): Record<string, unkn
     keys.flatMap((key) => (key in record ? [[key, record[key]]] : [])),
   );
 }
-
-const themePaletteKeys = [
-  "primaryColor",
-  "accentColor",
-  "backgroundColor",
-  "surfaceColor",
-  "textColor",
-  "mutedTextColor",
-  "borderColor",
-] as const;
 
 function pickThemePalette(value: unknown): Partial<RuntimeThemePalette> {
   return pickKnown(value, themePaletteKeys) as Partial<RuntimeThemePalette>;
@@ -146,7 +139,8 @@ export function normalizeConfig(
   config: RuntimeConfig,
   options: { source?: string; baseUrl?: string; strict?: boolean } = {},
 ): NormalizedSpeedTestConfig {
-  const validation = validateConfig(config);
+  const baseUrl = options.baseUrl ?? defaultBaseUrl();
+  const validation = validateConfig(config, { baseUrl });
   if (
     !validation.ok ||
     (options.strict === true && validation.unknownFields.length > 0)
@@ -155,9 +149,6 @@ export function normalizeConfig(
   }
 
   const defaults = defaultRuntimeConfig;
-  const baseUrl =
-    options.baseUrl ??
-    (typeof location === "undefined" ? "http://localhost/" : location.href);
   const normalizedWithoutDiagnostics = {
     brand: {
       ...defaults.brand,
@@ -232,9 +223,7 @@ export function normalizeConfigWithTargets(
     },
     {
       source: config.diagnostics.source,
-      baseUrl:
-        options.baseUrl ??
-        (typeof location === "undefined" ? "http://localhost/" : location.href),
+      ...options,
     },
   );
 }

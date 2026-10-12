@@ -15,6 +15,7 @@
     "test-results",
     ".impeccable",
     ".playwright-mcp",
+    ".scratch",
     "DESIGN.md",
     "PRODUCT.md"
   ]

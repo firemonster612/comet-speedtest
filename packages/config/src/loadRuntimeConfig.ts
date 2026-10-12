@@ -12,7 +12,20 @@ export async function loadRuntimeConfig(
   if (options.signal) {
     init.signal = options.signal;
   }
-  const response = await fetch(url, init);
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch (error) {
+    // A caller's abort is intentional, not a load failure; let it through as-is.
+    if (options.signal?.aborted) {
+      throw error;
+    }
+    throw new RuntimeConfigError(
+      "config-load-failed",
+      `Failed to load runtime config from ${url}: the request did not complete (network error, CORS, or server unreachable).`,
+      { cause: error, diagnostics: { url } },
+    );
+  }
   if (!response.ok) {
     throw new RuntimeConfigError(
       "config-load-failed",
@@ -23,6 +36,9 @@ export async function loadRuntimeConfig(
   try {
     return (await response.json()) as RuntimeConfig;
   } catch (error) {
+    if (options.signal?.aborted) {
+      throw error;
+    }
     throw new RuntimeConfigError(
       "config-load-failed",
       `Runtime config from ${url} is not valid JSON.`,

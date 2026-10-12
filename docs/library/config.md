@@ -50,7 +50,10 @@ normalization gives your app a chance to inspect and use the normalized shape
 directly. Normalization fills defaults, resolves relative target URLs against a
 base URL, records provenance under `diagnostics` (`source`, `configHash`,
 `unknownFields`, `normalizedAt`), and freezes the result so nothing mutates it
-after the fact.
+after the fact. Your input objects, such as profile `metadata`, are copied rather
+than frozen. `metadata` must be plain JSON data; validation rejects functions,
+class instances, cycles and non-finite numbers. Fields set to `undefined` are
+allowed.
 
 ## Install
 
@@ -148,6 +151,13 @@ not baked into the file. If your test endpoints live on a different origin than
 the page, either write absolute URLs in the config or pass the matching
 `baseUrl`.
 
+`validateConfig` takes the same option, `validateConfig(input, { baseUrl })`, with
+the same default. It reports every target URL, target profile URL, and
+`result.submitUrl` that cannot be parsed against that base (for example
+`"http://["`), with the field path and the bad value. `normalizeConfig` passes
+its base to validation, so an unparseable URL surfaces as a `config-invalid`
+`RuntimeConfigError`.
+
 ## Loading /comet.config.json
 
 The production app and most custom clients keep their config in a file served at
@@ -185,8 +195,11 @@ const config = await loadAndNormalizeConfig({
 ```
 
 `loadAndNormalizeConfig` also accepts `source` (defaults to the URL, recorded in
-diagnostics), `baseUrl`, and `strict`. A fetch that fails or returns invalid JSON
-throws a `RuntimeConfigError`.
+diagnostics), `baseUrl`, and `strict`. A fetch that fails (network error, CORS,
+unreachable server, or a non-2xx status) or returns invalid JSON throws a
+`RuntimeConfigError` with code `config-load-failed`. Aborting through `signal`
+rejects with the abort error instead, so you can tell cancellation apart from a
+failed load.
 
 ## Targets
 
@@ -298,14 +311,19 @@ directions. A caller can override this per run via `engine.run({ selection })`
 what you need to change.
 
 - `test.download` - `workers` (default 4), `transport` (`"auto"` by default),
-  `maxDurationMs`, `firstByteTimeoutMs`.
+  `maxDurationMs`, `firstByteTimeoutMs`. `maxDurationMs` must leave time for the
+  first measured window, about `(warmupWindowCount + 1) * samplesPerWindow *
+intervalMs`. A phase that ends before then fails instead of reporting 0 bps.
 - `test.upload` - `workers` (default 4), `transport` (`"auto"`), and
   fallback-related fields (`allowFallback`, `fallbackTransport`, chunk sizes),
-  plus `maxDurationMs` and `firstByteTimeoutMs`.
+  plus `maxDurationMs` and `firstByteTimeoutMs` (same `maxDurationMs` rule as
+  download).
 - `test.sampling` - `intervalMs`, `samplesPerWindow`, `measuredWindowCount`,
   `warmupWindowCount`, `percentile`, `includePartialWindowAtLeastRatio`.
 - `test.latency` - `idleRequests`, `loadedIntervalMs`, `timeoutMs`, `method`
-  (`"HEAD"` or `"GET"`), `enabled` (latency phase on by default), and
+  (`"HEAD"` or `"GET"`; with `"GET"` each probe's response body is cancelled once
+  its headers arrive, so probes don't compete with the throughput phases),
+  `enabled` (latency phase on by default), and
   `reachabilityCheck` (a single pre-flight probe per target that fails the run
   fast if a target cannot be reached at all; independent of `enabled`).
 
@@ -327,6 +345,9 @@ interface RuntimeResultConfig {
 
 When `submitUrl` is set, the production app builds a result record (see
 `createResultRecord` in `docs/library/core.md`) and POSTs it as JSON to that URL.
+A submission that gets no response within 15 seconds counts as failed. The
+status is tied to the run it belongs to, so a slow response from an earlier run
+never replaces the status of a newer one.
 A relative `submitUrl` is resolved against the base URL during normalization, the
 same as target URLs. When `submitUrl` is `null` (the default), no submission
 happens. `includeRawSamples` defaults to `false`; leave it off unless a downstream
@@ -340,7 +361,8 @@ The library does not need them to run a test, but they are part of the same file
 
 - `brand` - `name`, `logoUrl`, `faviconUrl`, `serverLabel`.
 - `theme` - `colorScheme` (`"light" | "dark" | "system"`), `light` and `dark`
-  palettes, `fontFamily`, `radius`.
+  palettes, `fontFamily`, `radius`. Palette colors, `fontFamily`, and `radius`
+  must be strings; validation does not check their CSS syntax.
 - `content` - the UI copy (`title`, `subtitle`, button labels, status strings).
 
 `$schema` is allowed at the top level and ignored by normalization.

@@ -5,8 +5,11 @@ import {
   testSectionKeys,
   type TestSection,
   testFieldSchema,
+  themePaletteKeys,
+  themeStyleKeys,
 } from "./schema";
 import { isSpeedTestRunPhase, throughputRunPhases } from "./selection";
+import { defaultBaseUrl, isResolvableUrl } from "./urls";
 
 const rootFields = new Set([
   "$schema",
@@ -24,45 +27,10 @@ const knownFields = new Map<string, Set<string>>([
   ["brand", new Set(runtimeSectionKeys("brand"))],
   [
     "theme",
-    new Set([
-      "colorScheme",
-      "light",
-      "dark",
-      "primaryColor",
-      "accentColor",
-      "backgroundColor",
-      "surfaceColor",
-      "textColor",
-      "mutedTextColor",
-      "borderColor",
-      "fontFamily",
-      "radius",
-    ]),
+    new Set(["colorScheme", "light", "dark", ...themePaletteKeys, ...themeStyleKeys]),
   ],
-  [
-    "theme.light",
-    new Set([
-      "primaryColor",
-      "accentColor",
-      "backgroundColor",
-      "surfaceColor",
-      "textColor",
-      "mutedTextColor",
-      "borderColor",
-    ]),
-  ],
-  [
-    "theme.dark",
-    new Set([
-      "primaryColor",
-      "accentColor",
-      "backgroundColor",
-      "surfaceColor",
-      "textColor",
-      "mutedTextColor",
-      "borderColor",
-    ]),
-  ],
+  ["theme.light", new Set(themePaletteKeys)],
+  ["theme.dark", new Set(themePaletteKeys)],
   ["content", new Set(runtimeSectionKeys("content"))],
   ["targets", new Set(["download", "upload", "latency"])],
   ["targetSelection", new Set(["strategy", "targetId"])],
@@ -82,9 +50,52 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function metadataIssue(issues: ValidationIssue[], path: string, value: unknown): void {
-  if (value !== undefined && !isRecord(value)) {
-    issues.push({ path, message: "Expected an object.", severity: "error" });
+  if (value === undefined) {
+    return;
   }
+  if (!isRecord(value)) {
+    issues.push({ path, message: "Expected an object.", severity: "error" });
+  } else if (!isJsonValue(value)) {
+    issues.push({
+      path,
+      message:
+        "Expected plain JSON data (objects, arrays, strings, finite numbers, booleans and null).",
+      severity: "error",
+    });
+  }
+}
+
+/**
+ * Plain JSON data: no cycles, functions, class instances or extra array keys.
+ * `undefined` values are allowed so callers can spread optional fields.
+ */
+function isJsonValue(value: unknown, ancestors: object[] = []): boolean {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "string" ||
+    typeof value === "boolean"
+  ) {
+    return true;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+  if (typeof value !== "object" || ancestors.includes(value)) {
+    return false;
+  }
+  // Dense, with no keys besides its indices.
+  const keys = Object.keys(value);
+  const isPlainArray =
+    Array.isArray(value) &&
+    keys.length === value.length &&
+    keys.every((key, index) => key === String(index));
+  const isPlainObject = Object.getPrototypeOf(value) === Object.prototype;
+  if (!isPlainArray && !isPlainObject) {
+    return false;
+  }
+  const path = [...ancestors, value];
+  return Object.values(value).every((item) => isJsonValue(item, path));
 }
 
 function numberIssue(
@@ -174,6 +185,32 @@ function nullableStringIssue(
     return;
   }
   optionalStringIssue(issues, path, value);
+}
+
+function unresolvableUrlIssue(
+  issues: ValidationIssue[],
+  path: string,
+  value: unknown,
+  baseUrl: string,
+): void {
+  if (typeof value === "string" && !isResolvableUrl(value, baseUrl)) {
+    issues.push({
+      path,
+      message: `Expected a URL that resolves against ${baseUrl}, got ${JSON.stringify(value)}.`,
+      severity: "error",
+    });
+  }
+}
+
+function urlIssue(
+  issues: ValidationIssue[],
+  path: string,
+  value: unknown,
+  baseUrl: string,
+  required = false,
+): void {
+  stringIssue(issues, path, value, required);
+  unresolvableUrlIssue(issues, path, value, baseUrl);
 }
 
 function booleanIssue(issues: ValidationIssue[], path: string, value: unknown): void {
@@ -268,7 +305,11 @@ function loadedLatencyIssue(
   }
 }
 
-export function validateConfig(config: unknown): ValidationResult {
+export function validateConfig(
+  config: unknown,
+  options: { baseUrl?: string } = {},
+): ValidationResult {
+  const baseUrl = options.baseUrl ?? defaultBaseUrl();
   const issues: ValidationIssue[] = [];
   const unknownFields: string[] = [];
 
@@ -307,6 +348,10 @@ export function validateConfig(config: unknown): ValidationResult {
       case "nullableString":
         nullableStringIssue(issues, path, value);
         break;
+      case "nullableUrl":
+        nullableStringIssue(issues, path, value);
+        unresolvableUrlIssue(issues, path, value, baseUrl);
+        break;
       case "boolean":
         booleanIssue(issues, path, value);
         break;
@@ -322,8 +367,12 @@ export function validateConfig(config: unknown): ValidationResult {
       "dark",
       "system",
     ]);
+    themePaletteFieldIssues(issues, "theme", maybeConfig.theme);
     themePaletteIssue(issues, "theme.light", maybeConfig.theme.light);
     themePaletteIssue(issues, "theme.dark", maybeConfig.theme.dark);
+    for (const key of themeStyleKeys) {
+      optionalStringIssue(issues, `theme.${key}`, maybeConfig.theme[key]);
+    }
   } else if (maybeConfig.theme !== undefined) {
     issues.push({
       path: "theme",
@@ -339,9 +388,7 @@ export function validateConfig(config: unknown): ValidationResult {
       severity: "error",
     });
   } else {
-    stringIssue(issues, "targets.download", maybeConfig.targets.download, true);
-    stringIssue(issues, "targets.upload", maybeConfig.targets.upload, true);
-    stringIssue(issues, "targets.latency", maybeConfig.targets.latency);
+    targetUrlIssues(issues, "targets", maybeConfig.targets, baseUrl);
   }
 
   const profileIds = new Set<string>();
@@ -393,14 +440,7 @@ export function validateConfig(config: unknown): ValidationResult {
               unknownFields.push(`${path}.targets.${key}`);
             }
           }
-          stringIssue(
-            issues,
-            `${path}.targets.download`,
-            profile.targets.download,
-            true,
-          );
-          stringIssue(issues, `${path}.targets.upload`, profile.targets.upload, true);
-          stringIssue(issues, `${path}.targets.latency`, profile.targets.latency);
+          targetUrlIssues(issues, `${path}.targets`, profile.targets, baseUrl);
         }
       }
     }
@@ -508,13 +548,39 @@ export function validateConfig(config: unknown): ValidationResult {
   };
 }
 
+function targetUrlIssues(
+  issues: ValidationIssue[],
+  path: string,
+  targets: Record<string, unknown>,
+  baseUrl: string,
+): void {
+  urlIssue(issues, `${path}.download`, targets.download, baseUrl, true);
+  urlIssue(issues, `${path}.upload`, targets.upload, baseUrl, true);
+  urlIssue(issues, `${path}.latency`, targets.latency, baseUrl);
+}
+
 function themePaletteIssue(
   issues: ValidationIssue[],
   path: string,
   value: unknown,
 ): void {
-  if (value !== undefined && !isRecord(value)) {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
     issues.push({ path, message: "Expected an object.", severity: "error" });
+    return;
+  }
+  themePaletteFieldIssues(issues, path, value);
+}
+
+function themePaletteFieldIssues(
+  issues: ValidationIssue[],
+  path: string,
+  palette: Record<string, unknown>,
+): void {
+  for (const key of themePaletteKeys) {
+    optionalStringIssue(issues, `${path}.${key}`, palette[key]);
   }
 }
 
