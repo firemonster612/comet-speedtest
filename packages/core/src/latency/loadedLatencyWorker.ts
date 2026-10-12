@@ -1,19 +1,22 @@
+import { composeAbortSignal } from "../shared/abortSignals";
 import type { WorkerCommand } from "../workers/workerProtocol";
 import { runMeasurementWorker, type WorkerRuntime } from "../workers/workerRuntime";
+import { discardResponseBody } from "./latencyProbe";
 
 async function probe(
   job: Extract<WorkerCommand, { type: "start-loaded-latency" }>["job"],
   runtime: WorkerRuntime,
 ): Promise<void> {
   const startedAt = performance.now();
-  const controller = new AbortController();
-  runtime.signal.addEventListener("abort", () => controller.abort(), { once: true });
-  const timeout = setTimeout(() => controller.abort(), job.timeoutMs);
+  const request = composeAbortSignal({
+    signal: runtime.signal,
+    timeoutMs: job.timeoutMs,
+  });
   try {
     const response = await fetch(job.target, {
       method: job.method,
       cache: "no-store",
-      signal: controller.signal,
+      signal: request.signal,
     });
     runtime.post({
       type: "latency",
@@ -23,6 +26,7 @@ async function probe(
       at: performance.now(),
       ok: response.ok,
     });
+    discardResponseBody(response);
   } catch {
     runtime.post({
       type: "latency",
@@ -33,7 +37,7 @@ async function probe(
       ok: false,
     });
   } finally {
-    clearTimeout(timeout);
+    request.dispose();
   }
 }
 

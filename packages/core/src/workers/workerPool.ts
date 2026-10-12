@@ -27,6 +27,10 @@ export class WorkerPool {
 
   stop(reason: string): void {
     for (const managed of this.workers) {
+      // Messages already queued from this worker are dropped, not delivered to a
+      // phase that has finished.
+      managed.worker.onmessage = null;
+      managed.worker.onerror = null;
       managed.worker.postMessage({ type: "stop", reason } satisfies WorkerCommand);
       setTimeout(() => managed.worker.terminate(), 0);
     }

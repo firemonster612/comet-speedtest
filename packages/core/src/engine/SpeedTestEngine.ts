@@ -26,11 +26,12 @@ import type {
   LatencyResult,
 } from "../results/resultTypes";
 import { detectCapabilities } from "../transport/capabilities";
-import { resolveTransports } from "../transport/registry";
+import { type ResolvedTransports, resolveTransports } from "../transport/registry";
 import { initialState, makeRunId, toSpeedTestError } from "./lifecycle";
 import {
   PartialThroughputPhaseError,
   type DeterministicPhaseAdapter,
+  type PhaseEventSink,
   SyntheticMeasurementAdapter,
   type ThroughputPhaseResult,
   runWorkerPhase,
@@ -42,15 +43,27 @@ export interface SpeedTestEngineOptions {
   measurementAdapter?: DeterministicPhaseAdapter;
 }
 
+type Listener = (event: SpeedTestEvent) => void;
+
 export class SpeedTestEngine implements SpeedTestEngineInterface {
-  private readonly handlers = new Map<
-    SpeedTestEvent["type"],
-    Set<(event: SpeedTestEvent) => void>
-  >();
+  /**
+   * Per event type, each listener and a token for its current registration. A
+   * listener removed and re-added gets a new token, so a dispatch already in
+   * progress skips it (DOM `EventTarget` semantics).
+   */
+  private readonly handlers = new Map<SpeedTestEvent["type"], Map<Listener, object>>();
   private readonly config: NormalizedSpeedTestConfig;
   private readonly adapter: DeterministicPhaseAdapter | undefined;
   private state = initialState();
   private activeController: AbortController | null = null;
+  /**
+   * Why fetch-stream upload failed on an earlier run where the xhr-chunked retry
+   * then succeeded. That failure comes from the browser/server pairing (for
+   * example Chrome refusing streaming uploads over HTTP/1.1), so it repeats on
+   * every run; later runs go straight to xhr-chunked instead of paying for the
+   * failed attempt again.
+   */
+  private fetchUploadFailure: string | null = null;
 
   constructor(
     config: SpeedTestConfig,
@@ -141,10 +154,12 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
     let downloadResult: Awaited<ReturnType<typeof this.runThroughput>> | null = null;
     let uploadResult: Awaited<ReturnType<typeof this.runThroughput>> | null = null;
 
+    let outcome: RunOutcome;
     try {
-      const transports = resolveTransports(this.config, diagnostics.capabilityReport, {
-        phases: selectedThroughputPhases,
-      });
+      const transports = this.resolveRunTransports(
+        selectedThroughputPhases,
+        diagnostics.capabilityReport,
+      );
       diagnostics.requestedTransports = transports.requested;
       diagnostics.actualTransports = transports.actual;
       diagnostics.measurementBasis = measurementBasisFor(transports.actual);
@@ -167,7 +182,7 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
       }
 
       if (selection.phases.includes("idle-latency")) {
-        this.enterPhase("idle-latency");
+        this.enterPhase("idle-latency", controller.signal);
         const idle = await runIdleLatency(
           this.config.targets.latency,
           this.config.test.latency,
@@ -191,7 +206,7 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
         if (!downloadTransport) {
           throw transportMissingError("download");
         }
-        this.enterPhase("download");
+        this.enterPhase("download", controller.signal);
         const download = await this.runThroughput(
           "download",
           runId,
@@ -214,7 +229,7 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
         if (!uploadTransport) {
           throw transportMissingError("upload");
         }
-        this.enterPhase("upload");
+        this.enterPhase("upload", controller.signal);
         const upload = await this.runUploadWithRuntimeFallback(
           runId,
           uploadTransport,
@@ -232,7 +247,7 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
         });
       }
 
-      this.enterPhase("finalize");
+      this.enterPhase("finalize", controller.signal);
       const latency = {
         idle: idleResult,
         underDownloadLoad: downloadResult?.loadedLatency ?? null,
@@ -249,18 +264,11 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
         bufferbloat: gradeBufferbloat(latency),
         diagnostics,
       };
-
-      this.state = {
-        ...this.state,
-        status: "complete",
-        phase: null,
-        completedAt: result.completedAt,
-        result,
-      };
-      this.emit({ type: "result", result });
-      return { ok: true, result };
+      // A `phase-start: finalize` listener may have stopped the run.
+      controller.signal.throwIfAborted();
+      outcome = { ok: true, result };
     } catch (error) {
-      return this.failRun(error, {
+      outcome = this.failureOutcome(error, {
         aborted: controller.signal.aborted,
         diagnostics,
         runId,
@@ -269,18 +277,44 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
         download: downloadResult,
         upload: uploadResult,
       });
-    } finally {
-      this.activeController = null;
     }
+    this.settleRun(outcome, controller.signal.aborted);
+    return outcome;
+  }
+
+  /**
+   * The run's last act: release the engine, record the outcome, then publish it.
+   * Publishing comes last because a `result` or `error` listener may start the
+   * next run, and from then on the shared state belongs to that run.
+   */
+  private settleRun(outcome: RunOutcome, aborted: boolean): void {
+    this.activeController = null;
+    if (outcome.ok) {
+      this.state = {
+        ...this.state,
+        status: "complete",
+        phase: null,
+        completedAt: outcome.result.completedAt,
+        result: outcome.result,
+      };
+      this.emit({ type: "result", result: outcome.result });
+      return;
+    }
+    this.state = {
+      ...this.state,
+      status: aborted ? "aborted" : "error",
+      completedAt: outcome.partial?.completedAt ?? new Date().toISOString(),
+      error: outcome.error,
+    };
+    this.emit({ type: "error", error: outcome.error });
   }
 
   /**
    * Assemble a failure outcome: merge any partial phase result into diagnostics,
-   * build the typed {@link PartialResult} snapshot, record the run as
-   * errored/aborted, emit the `error` event, and return `{ ok: false }`. Kept off
-   * the `run()` happy path so that method reads as the phase narrative.
+   * build the typed {@link PartialResult} snapshot, and return `{ ok: false }`.
+   * Kept off the `run()` happy path so that method reads as the phase narrative.
    */
-  private failRun(
+  private failureOutcome(
     error: unknown,
     ctx: {
       aborted: boolean;
@@ -337,13 +371,6 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
       },
       diagnostics,
     };
-    this.state = {
-      ...this.state,
-      status: ctx.aborted ? "aborted" : "error",
-      completedAt,
-      error: speedError,
-    };
-    this.emit({ type: "error", error: speedError });
     return { ok: false, error: speedError, partial };
   }
 
@@ -377,10 +404,13 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
     event: TEvent,
     handler: SpeedTestEventHandler<TEvent>,
   ): Unsubscribe {
-    const handlers = this.handlers.get(event) ?? new Set();
-    handlers.add(handler as (event: SpeedTestEvent) => void);
-    this.handlers.set(event, handlers);
-    return () => handlers.delete(handler as (event: SpeedTestEvent) => void);
+    const listener = handler as Listener;
+    const registrations = this.handlers.get(event) ?? new Map<Listener, object>();
+    this.handlers.set(event, registrations);
+    if (!registrations.has(listener)) {
+      registrations.set(listener, {});
+    }
+    return () => registrations.delete(listener);
   }
 
   getState(): SpeedTestState {
@@ -397,32 +427,51 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
     const adapter =
       this.adapter ??
       (this.shouldUseSyntheticAdapter() ? new SyntheticMeasurementAdapter() : null);
-    const emit = {
-      sample: (sample: Parameters<typeof this.emitSample>[0]) =>
-        this.emitSample(sample),
-      window: (window: Parameters<typeof this.emitWindow>[0]) =>
-        this.emitWindow(window),
-      latency: (sample: Parameters<typeof this.emitLatency>[0]) =>
-        this.emitLatency(sample),
+    // Closed once the attempt settles: a late worker message or adapter callback
+    // must not reach listeners after `phase-complete` or `phase-reset`.
+    let open = true;
+    const emit: PhaseEventSink = {
+      sample: (sample) => open && this.emitSample(sample),
+      window: (window) => open && this.emitWindow(window),
+      latency: (sample) => open && this.emitLatency(sample),
     };
-    if (adapter) {
-      return adapter.runPhase({
-        phase,
-        config: this.config,
-        signal,
-        loadedLatency,
-        emit,
-      });
+    try {
+      return await (adapter
+        ? adapter.runPhase({ phase, config: this.config, signal, loadedLatency, emit })
+        : runWorkerPhase({
+            phase,
+            config: this.config,
+            runId,
+            uploadTransport,
+            loadedLatency,
+            signal,
+            emit,
+          }));
+    } finally {
+      open = false;
     }
-    return runWorkerPhase({
-      phase,
-      config: this.config,
-      runId,
-      uploadTransport,
-      loadedLatency,
-      signal,
-      emit,
-    });
+  }
+
+  private resolveRunTransports(
+    phases: ThroughputPhase[],
+    capabilities: CapabilityReport,
+  ): ResolvedTransports {
+    const transports = resolveTransports(this.config, capabilities, { phases });
+    if (
+      this.fetchUploadFailure === null ||
+      transports.actual.upload !== "fetch-stream" ||
+      !capabilities.xhrUpload
+    ) {
+      return transports;
+    }
+    return {
+      ...transports,
+      actual: { ...transports.actual, upload: "xhr-chunked" },
+      fallbackReasons: [
+        ...transports.fallbackReasons,
+        `fetch upload streaming failed at runtime on an earlier run (${this.fetchUploadFailure}); using xhr-chunked`,
+      ],
+    };
   }
 
   private async runUploadWithRuntimeFallback(
@@ -432,6 +481,7 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
     diagnostics: SpeedTestDiagnostics,
     signal: AbortSignal,
   ) {
+    const { latestSample, latestLatencySample } = this.state;
     try {
       return await this.runThroughput(
         "upload",
@@ -449,12 +499,25 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
       ) {
         throw error;
       }
+      const failure = error instanceof Error ? error.message : String(error);
+      const reason = `fetch upload streaming failed at runtime (${failure}); fell back to xhr-chunked`;
       diagnostics.actualTransports.upload = "xhr-chunked";
       diagnostics.measurementBasis = measurementBasisFor(diagnostics.actualTransports);
-      diagnostics.fallbackReasons.push(
-        "fetch upload streaming failed at runtime; fell back to xhr-chunked",
+      diagnostics.fallbackReasons.push(reason);
+      // Nothing the failed attempt emitted describes the measurement that counts.
+      this.state = { ...this.state, latestSample, latestLatencySample };
+      this.emit({ type: "phase-reset", phase: "upload", reason });
+      const upload = await this.runThroughput(
+        "upload",
+        runId,
+        "xhr-chunked",
+        loadedLatency,
+        signal,
       );
-      return this.runThroughput("upload", runId, "xhr-chunked", loadedLatency, signal);
+      // The worker errors don't say whether streaming or the server was at fault;
+      // only xhr-chunked succeeding where fetch-stream failed pins it on the transport.
+      this.fetchUploadFailure = failure;
+      return upload;
     }
   }
 
@@ -468,7 +531,9 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
     );
   }
 
-  private enterPhase(phase: SpeedTestPhase): void {
+  /** Phase boundary: a listener may have stopped the run since the last one. */
+  private enterPhase(phase: SpeedTestPhase, signal: AbortSignal): void {
+    signal.throwIfAborted();
     this.state = { ...this.state, phase };
     this.emit({ type: "phase-start", phase });
   }
@@ -544,11 +609,40 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
     return [...urls];
   }
 
+  /**
+   * Dispatch like DOM `EventTarget`: listeners added during dispatch wait for
+   * the next event, listeners removed during dispatch are skipped, and a
+   * throwing listener is reported as an uncaught error while the remaining
+   * listeners still run, so a consumer bug never changes the run's
+   * measurements or outcome. Ending a run from a listener is `stop()`'s job.
+   */
   private emit(event: SpeedTestEvent): void {
-    for (const handler of this.handlers.get(event.type) ?? []) {
-      handler(event);
+    const registrations = this.handlers.get(event.type);
+    if (!registrations) {
+      return;
+    }
+    for (const [listener, token] of [...registrations]) {
+      if (registrations.get(listener) !== token) {
+        continue;
+      }
+      try {
+        listener(event);
+      } catch (error) {
+        reportUncaught(error);
+      }
     }
   }
+}
+
+/** Report an exception the way the platform reports uncaught errors, without unwinding the caller. */
+function reportUncaught(error: unknown): void {
+  if (typeof reportError === "function") {
+    reportError(error);
+    return;
+  }
+  queueMicrotask(() => {
+    throw error;
+  });
 }
 
 function measurementBasisFor(actualTransports: {
@@ -561,7 +655,7 @@ function measurementBasisFor(actualTransports: {
       actualTransports.upload === null
         ? null
         : actualTransports.upload === "fetch-stream"
-          ? "request stream pull/backpressure chunks"
+          ? "request stream chunks taken by fetch"
           : "xhr upload progress events",
   };
 }
@@ -610,9 +704,8 @@ function errorCodeForPhase(phase: SpeedTestPhase | null): SpeedTestError["code"]
     case "upload":
       return "upload-failed";
     case "finalize":
-      return "upload-failed";
     case null:
-      return "download-failed";
+      return "internal-error";
   }
 }
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { SpeedTestResult } from "../../results/resultTypes";
+import type {
+  LatencyResult,
+  LatencySample,
+  SpeedTestResult,
+} from "../../results/resultTypes";
 import { createResultRecord } from "../createResultRecord";
 
 function result(): SpeedTestResult {
@@ -71,6 +75,18 @@ function throughput(phase: "download" | "upload") {
   };
 }
 
+function latency(sample: LatencySample): LatencyResult {
+  return {
+    meanMs: 20,
+    medianMs: 20,
+    minMs: 20,
+    maxMs: 20,
+    p95Ms: 20,
+    jitterMs: null,
+    samples: [sample],
+  };
+}
+
 describe("createResultRecord", () => {
   it("wraps results with versioning, target metadata, and context", () => {
     const record = createResultRecord(result(), {
@@ -99,5 +115,26 @@ describe("createResultRecord", () => {
     expect(record.result.upload?.windows).toBeUndefined();
     expect(original.download?.samples).toHaveLength(1);
     expect(original.upload?.windows).toEqual([]);
+  });
+
+  it("strips latency samples and counts them as raw samples", () => {
+    const sample = { startedAtMs: 0, endedAtMs: 20, latencyMs: 20, ok: true };
+    const withLatency: SpeedTestResult = {
+      ...result(),
+      download: { ...throughput("download"), samples: [] },
+      upload: null,
+      latency: {
+        idle: latency({ ...sample, phase: "idle" }),
+        underDownloadLoad: latency({ ...sample, phase: "download" }),
+        underUploadLoad: null,
+      },
+    };
+
+    expect(createResultRecord(withLatency).privacy.rawSamples).toBe("included");
+    const stripped = createResultRecord(withLatency, { rawSamples: "strip" }).result;
+    expect(stripped.latency.idle).toMatchObject({ medianMs: 20, samples: [] });
+    expect(stripped.latency.underDownloadLoad?.samples).toEqual([]);
+    expect(stripped.latency.underUploadLoad).toBeNull();
+    expect(withLatency.latency.idle?.samples).toHaveLength(1);
   });
 });

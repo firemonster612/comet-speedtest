@@ -2,6 +2,7 @@ import type { NormalizedSamplingConfig } from "@comet-speedtest/config";
 
 import type { SpeedSample, SpeedWindow, ThroughputPhase } from "../results/resultTypes";
 import { percentile } from "./percentile";
+import { bitsPerSecond } from "./sampleCollector";
 
 export function buildWindows(
   phase: ThroughputPhase,
@@ -17,17 +18,17 @@ export function buildWindows(
     if (chunk.length < chunkSize && ratio < config.includePartialWindowAtLeastRatio) {
       continue;
     }
-    const totalBitsPerSecond = chunk.reduce(
-      (sum, sample) => sum + sample.bitsPerSecond,
-      0,
-    );
+    // Total bytes over total time, so a late timer's long sample weighs more
+    // than a short one instead of each sample's rate counting equally.
+    const bytes = chunk.reduce((sum, sample) => sum + sample.bytes, 0);
+    const durationMs = chunk.reduce((sum, sample) => sum + sample.durationMs, 0);
     windows.push({
       phase,
       index: windows.length,
       sampleCount: chunk.length,
       startedAtMs: chunk[0]?.startedAtMs ?? 0,
       endedAtMs: chunk.at(-1)?.endedAtMs ?? 0,
-      averageBitsPerSecond: chunk.length > 0 ? totalBitsPerSecond / chunk.length : 0,
+      averageBitsPerSecond: bitsPerSecond(bytes, durationMs),
       sampleIndexes: sampleIndexes.slice(start, start + chunk.length),
       warmup: windows.length < config.warmupWindowCount,
     });

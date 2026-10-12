@@ -2,9 +2,19 @@ import type { NormalizedLatencyConfig } from "@comet-speedtest/config";
 
 import type { LatencyResult, LatencySample } from "../results/resultTypes";
 import { percentile } from "../sampling/percentile";
+import { composeAbortSignal } from "../shared/abortSignals";
 
 function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
+/**
+ * Probes only need response headers. A GET body left open keeps downloading
+ * alongside the throughput phases and skews them, so cancel it once timed.
+ * A failed cancel only means the body is already closed, so it is ignored.
+ */
+export function discardResponseBody(response: Response): void {
+  response.body?.cancel().catch(() => {});
 }
 
 /**
@@ -82,17 +92,16 @@ export async function runIdleLatency(
     if (signal.aborted) {
       throw new Error("Run aborted");
     }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+    const request = composeAbortSignal({ signal, timeoutMs: config.timeoutMs });
     const startedAtMs = nowMs();
     try {
-      const combinedSignal = combineAbortSignals(signal, controller.signal);
       const response = await fetch(target, {
         method: config.method,
         cache: "no-store",
-        signal: combinedSignal,
+        signal: request.signal,
       });
       const endedAtMs = nowMs();
+      discardResponseBody(response);
       collector.record({
         phase: "idle",
         startedAtMs,
@@ -113,7 +122,7 @@ export async function runIdleLatency(
         ok: false,
       });
     } finally {
-      clearTimeout(timeout);
+      request.dispose();
     }
   }
   return collector.aggregate();
@@ -141,47 +150,26 @@ export async function probeReachability(
   config: NormalizedLatencyConfig,
   signal: AbortSignal,
 ): Promise<ReachabilityResult> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+  const request = composeAbortSignal({ signal, timeoutMs: config.timeoutMs });
   try {
-    const combinedSignal = combineAbortSignals(signal, controller.signal);
     const response = await fetch(target, {
       method: config.method,
       cache: "no-store",
-      signal: combinedSignal,
+      signal: request.signal,
     });
+    discardResponseBody(response);
     return { reachable: true, status: response.status };
   } catch (error) {
     if (signal.aborted) {
       throw new Error("Run aborted");
     }
-    const reason = controller.signal.aborted
+    const reason = request.signal.aborted
       ? `no response within ${config.timeoutMs} ms`
       : error instanceof Error
         ? error.message
         : String(error);
     return { reachable: false, reason };
   } finally {
-    clearTimeout(timeout);
+    request.dispose();
   }
-}
-
-function combineAbortSignals(
-  primary: AbortSignal,
-  secondary: AbortSignal,
-): AbortSignal {
-  if ("any" in AbortSignal) {
-    return AbortSignal.any([primary, secondary]);
-  }
-  if (primary.aborted) {
-    return primary;
-  }
-  if (secondary.aborted) {
-    return secondary;
-  }
-  const controller = new AbortController();
-  const abort = () => controller.abort();
-  primary.addEventListener("abort", abort, { once: true });
-  secondary.addEventListener("abort", abort, { once: true });
-  return controller.signal;
 }

@@ -8,6 +8,10 @@ export interface ByteEvent {
   at: number;
 }
 
+export function bitsPerSecond(bytes: number, durationMs: number): number {
+  return (bytes * 8 * 1000) / durationMs;
+}
+
 export class SampleCollector {
   private readonly buckets = new Map<string, number>();
   private readonly samples: SpeedSample[] = [];
@@ -46,7 +50,7 @@ export class SampleCollector {
       endedAtMs: now,
       durationMs,
       bytes,
-      bitsPerSecond: (bytes * 8 * 1000) / durationMs,
+      bitsPerSecond: bitsPerSecond(bytes, durationMs),
       warmup:
         this.sampleIndex < this.config.warmupWindowCount * this.config.samplesPerWindow,
       workerBreakdown,
