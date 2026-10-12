@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { uploadedPaths, uploadFixtureOrigin } from "./uploadFixture";
+
 test("production app loads runtime config and renders the speed test widget", async ({
   page,
 }) => {
@@ -33,10 +35,16 @@ test("production app completes a real worker-backed run against fixture endpoint
   await expect(results.getByText("Mbps", { exact: true })).toHaveCount(2);
 });
 
-test("production result submission posts once per completed run", async ({ page }) => {
+test("production result submission posts once per completed run", async ({
+  page,
+  browserName,
+}) => {
   let submissionCount = 0;
   let postedBody: Record<string, unknown> | null = null;
-  await routeFixtureSpeedTest(page, { submitUrl: "/fixture/results" });
+  await routeFixtureSpeedTest(page, {
+    submitUrl: "/fixture/results",
+    uploadTransport: "auto",
+  });
   await page.route("**/fixture/results", async (route) => {
     submissionCount += 1;
     postedBody = route.request().postDataJSON() as Record<string, unknown>;
@@ -55,10 +63,27 @@ test("production result submission posts once per completed run", async ({ page 
     result: { runId: expect.any(String) },
     privacy: { rawSamples: "included" },
   });
+  // The fixture server speaks HTTP/1.1: Chromium's streaming upload fails there
+  // and falls back at runtime; Firefox doesn't stream request bodies at all.
+  // Either way the measured upload must be the XHR one.
+  expect(postedBody).toMatchObject({
+    result: { diagnostics: { actualTransports: { upload: "xhr-chunked" } } },
+  });
+  const fallbackReasons = (
+    postedBody as unknown as { result: { diagnostics: { fallbackReasons: string[] } } }
+  ).result.diagnostics.fallbackReasons;
+  const fellBackAtRuntime = fallbackReasons.some((reason) =>
+    reason.includes("failed at runtime"),
+  );
+  expect(fellBackAtRuntime).toBe(browserName === "chromium");
 });
 
-test("production runs against a configured target profile", async ({ page }) => {
+test("production runs against a configured target profile", async ({
+  page,
+}, testInfo) => {
   const requestedUrls: string[] = [];
+  // The upload server is shared by every project running in parallel.
+  const uploadPrefix = `${uploadFixtureOrigin}/${testInfo.project.name}`;
   await routeFixtureSpeedTest(page, {
     targets: {
       download: "/fixture/default/download.bin",
@@ -71,7 +96,7 @@ test("production runs against a configured target profile", async ({ page }) => 
         label: "Slow",
         targets: {
           download: "/fixture/slow/download.bin",
-          upload: "/fixture/slow/upload",
+          upload: `${uploadPrefix}/slow/upload`,
           latency: "/fixture/slow/latency",
         },
       },
@@ -80,7 +105,7 @@ test("production runs against a configured target profile", async ({ page }) => 
         label: "Fast",
         targets: {
           download: "/fixture/fast/download.bin",
-          upload: "/fixture/fast/upload",
+          upload: `${uploadPrefix}/fast/upload`,
           latency: "/fixture/fast/latency",
         },
       },
@@ -102,9 +127,6 @@ test("production runs against a configured target profile", async ({ page }) => 
       });
       return;
     }
-    if (url.includes("/fixture/fast/upload")) {
-      requestedUrls.push(url);
-    }
     await route.fulfill({ status: 204 });
   });
 
@@ -115,7 +137,9 @@ test("production runs against a configured target profile", async ({ page }) => 
   expect(requestedUrls.some((url) => url.includes("/fixture/fast/download.bin"))).toBe(
     true,
   );
-  expect(requestedUrls.some((url) => url.includes("/fixture/fast/upload"))).toBe(true);
+  const uploads = await uploadedPaths();
+  expect(uploads).toContain(`/${testInfo.project.name}/fast/upload`);
+  expect(uploads).not.toContain(`/${testInfo.project.name}/slow/upload`);
 });
 
 test("production applies theme variables from runtime config", async ({ page }) => {
@@ -183,6 +207,8 @@ async function routeFixtureSpeedTest(
   page: Page,
   options: {
     submitUrl?: string;
+    /** "auto" lets the engine pick fetch-stream and fall back to xhr-chunked. */
+    uploadTransport?: "auto" | "xhr-chunked";
     theme?: Record<string, string>;
     targets?: { download: string; upload: string; latency: string };
     targetProfiles?: Array<{
@@ -195,7 +221,7 @@ async function routeFixtureSpeedTest(
 ): Promise<void> {
   const targets = options.targets ?? {
     download: "/fixture/download.bin",
-    upload: "/fixture/upload",
+    upload: `${uploadFixtureOrigin}/fixture/upload`,
     latency: "/fixture/latency",
   };
   await page.route("**/comet.config.json", async (route) => {
@@ -210,8 +236,8 @@ async function routeFixtureSpeedTest(
           download: { workers: 1, maxDurationMs: 1000 },
           upload: {
             workers: 1,
-            transport: "xhr-chunked",
-            allowFallback: false,
+            transport: options.uploadTransport ?? "xhr-chunked",
+            allowFallback: options.uploadTransport === "auto",
             fallbackChunkSizeBytes: 1024,
             maxDurationMs: 1000,
           },
@@ -248,9 +274,6 @@ async function routeFixtureSpeedTest(
     });
   });
   await page.route("**/fixture/latency", async (route) => {
-    await route.fulfill({ status: 204 });
-  });
-  await page.route("**/fixture/upload", async (route) => {
     await route.fulfill({ status: 204 });
   });
 }

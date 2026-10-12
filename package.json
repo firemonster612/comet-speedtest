@@ -17,14 +17,15 @@
     "dev:prod": "pnpm --filter @comet-speedtest/production-app dev",
     "dev:playground": "pnpm --filter @comet-speedtest/playground dev",
     "build": "pnpm --filter @comet-speedtest/config build && pnpm --filter @comet-speedtest/core build && pnpm --filter @comet-speedtest/internal-ui build && pnpm --filter @comet-speedtest/production-app build && pnpm --filter @comet-speedtest/playground build && pnpm --filter @comet-speedtest/create-app build && pnpm --filter @comet-speedtest/production build",
-    "lint": "oxlint 'apps/*/src' 'apps/*/vite.config.ts' 'apps/*/vitest.config.ts' 'internal/*/src' 'internal/*/vitest.config.ts' 'packages/*/src' 'packages/*/bin' 'packages/*/scripts' 'packages/*/vitest.config.ts' 'tests/browser' playwright.config.ts oxlint.config.ts --ignore-pattern '**/dist/**' --ignore-pattern '**/dist-templates/**' --ignore-pattern '**/dist-app/**' --ignore-pattern '**/node_modules/**'",
-    "lint:fix": "oxlint --fix 'apps/*/src' 'apps/*/vite.config.ts' 'apps/*/vitest.config.ts' 'internal/*/src' 'internal/*/vitest.config.ts' 'packages/*/src' 'packages/*/bin' 'packages/*/scripts' 'packages/*/vitest.config.ts' 'tests/browser' playwright.config.ts oxlint.config.ts --ignore-pattern '**/dist/**' --ignore-pattern '**/dist-templates/**' --ignore-pattern '**/dist-app/**' --ignore-pattern '**/node_modules/**'",
+    "lint": "oxlint 'apps/*/src' 'apps/*/vite.config.ts' 'apps/*/vitest.config.ts' 'internal/*/src' 'internal/*/vitest.config.ts' 'packages/*/src' 'packages/*/bin' 'packages/*/scripts' 'packages/*/vitest.config.ts' 'scripts' 'tests/browser' playwright.config.ts oxlint.config.ts --ignore-pattern '**/dist/**' --ignore-pattern '**/dist-templates/**' --ignore-pattern '**/dist-app/**' --ignore-pattern '**/node_modules/**'",
+    "lint:fix": "oxlint --fix 'apps/*/src' 'apps/*/vite.config.ts' 'apps/*/vitest.config.ts' 'internal/*/src' 'internal/*/vitest.config.ts' 'packages/*/src' 'packages/*/bin' 'packages/*/scripts' 'packages/*/vitest.config.ts' 'scripts' 'tests/browser' playwright.config.ts oxlint.config.ts --ignore-pattern '**/dist/**' --ignore-pattern '**/dist-templates/**' --ignore-pattern '**/dist-app/**' --ignore-pattern '**/node_modules/**'",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.browser.json --noEmit",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test": "pnpm -r test",
     "test:browser": "env -u FORCE_COLOR -u NO_COLOR playwright test",
-    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:browser"
+    "test:packages": "node scripts/test-packages.mjs",
+    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:browser && pnpm test:packages"
   },
   "dependencies": {
     "lucide-react": "catalog:",
