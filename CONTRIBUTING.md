@@ -9,11 +9,16 @@ stay small; diagnostics and test-only helpers belong on explicit subpaths.
 
 ## Setup
 
-Use pnpm. Do not use npm for this repo.
+Use Node 22 (the version CI runs) and pnpm 11.8.0, which `packageManager` in
+`package.json` pins. Do not use npm for this repo.
 
 ```sh
 pnpm install
+pnpm exec playwright install --with-deps chromium firefox
 ```
+
+The second command installs the browsers `pnpm check` runs the browser tests in.
+Without it, the browser tests fail with a missing-executable error.
 
 ## Local Development
 
@@ -21,7 +26,8 @@ pnpm install
 pnpm dev             # playground (prod app but with dev tools sidebar for debugging)
 pnpm dev:prod        # production app
 pnpm build          # bundle all the packages into their respective `dist` folders
-pnpm check          # run typecheck, lint, formatter check and unit tests
+pnpm test:packages  # pack the publishable packages and build a project from each create-app mode
+pnpm check          # run formatter check, lint, typecheck, unit tests, build, browser tests and pnpm test:packages
 ```
 
 Vite and Vitest read workspace source through `workspace-vite-aliases.ts`.

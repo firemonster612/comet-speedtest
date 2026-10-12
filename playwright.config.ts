@@ -12,6 +12,11 @@ export default defineConfig({
   },
   webServer: [
     {
+      command: "node tests/browser/upload-fixture-server.mjs",
+      reuseExistingServer: !process.env.CI,
+      url: "http://127.0.0.1:4175/uploads",
+    },
+    {
       command:
         "pnpm --filter @comet-speedtest/production-app build && pnpm --filter @comet-speedtest/production build && node packages/production/bin/comet-speedtest.js build --root tests/browser/fixtures/production-deployable && node packages/production/bin/comet-speedtest.js preview --root tests/browser/fixtures/production-deployable --host 127.0.0.1 --port 4173",
       reuseExistingServer: !process.env.CI,
@@ -34,6 +39,10 @@ export default defineConfig({
     {
       name: "chromium-mobile",
       use: { ...devices["Pixel 7"] },
+    },
+    {
+      name: "firefox-desktop",
+      use: { ...devices["Desktop Firefox"] },
     },
   ],
 });

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { uploadFixtureOrigin } from "./uploadFixture";
+
 test("playground loads a profile, edits config, and shows diagnostics", async ({
   page,
 }) => {
@@ -50,7 +52,7 @@ async function routeFixtureSpeedTest(page: Page): Promise<void> {
         },
         targets: {
           download: "/fixture/download.bin",
-          upload: "/fixture/upload",
+          upload: `${uploadFixtureOrigin}/fixture/upload`,
           latency: "/fixture/latency",
         },
         result: {
@@ -98,9 +100,6 @@ async function routeFixtureSpeedTest(page: Page): Promise<void> {
     });
   });
   await page.route("**/fixture/latency", async (route) => {
-    await route.fulfill({ status: 204 });
-  });
-  await page.route("**/fixture/upload", async (route) => {
     await route.fulfill({ status: 204 });
   });
 }
