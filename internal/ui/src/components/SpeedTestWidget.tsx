@@ -50,11 +50,17 @@ export function SpeedTestWidget(props: {
   theme?: RuntimeTheme;
   brand?: RuntimeBrand;
   content?: RuntimeContent;
-  submission?: SpeedTestDiagnostics["submission"];
+  /** Submission status for the run `runId`; ignored for any other result. */
+  submission?: {
+    runId: string;
+    diagnostic: SpeedTestDiagnostics["submission"] | null;
+  } | null;
+  /** Called when the user starts a run, before its result or error. */
+  onStart?: () => void;
   onResult?: (result: SpeedTestResult) => void | Promise<void>;
   onError?: (error: SpeedTestError) => void;
 }) {
-  const { onError, onResult } = props;
+  const { onError, onResult, onStart } = props;
   // Standalone-embed convenience: pass `theme` and the widget themes itself,
   // no setup. For an app with its own chrome or dark mode, wrap it in
   // `<CometThemeProvider theme>` and omit this prop instead - both write
@@ -97,20 +103,25 @@ export function SpeedTestWidget(props: {
   // choreography: the button expands + rises and the run components draw out.
   const active = status === "running";
 
-  // Overlay the latest submission status onto the result, so the copied payload
-  // and any diagnostics view reflect it. Submission does not affect the numbers.
+  // Overlay the submission status onto the result it belongs to, so the copied
+  // payload and any diagnostics view reflect it. A status from an earlier run
+  // never shows on a newer result. Submission does not affect the numbers.
   const displayedResult = useMemo(() => {
     if (!controller.result) {
       return null;
     }
-    if (!props.submission) {
+    const submission =
+      props.submission?.runId === controller.result.runId
+        ? props.submission.diagnostic
+        : null;
+    if (!submission) {
       return controller.result;
     }
     return {
       ...controller.result,
       diagnostics: {
         ...controller.result.diagnostics,
-        submission: props.submission,
+        submission,
       },
     };
   }, [controller.result, props.submission]);
@@ -213,6 +224,7 @@ export function SpeedTestWidget(props: {
     setDismissedErrorKey(null);
     setShowChart(false);
     reportedErrorRef.current = null;
+    onStart?.();
     await controller.start();
   }
 
