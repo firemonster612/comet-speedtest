@@ -620,6 +620,8 @@ describe("@comet-speedtest/core engine", () => {
 
   it("reports upload phase failures with an upload-specific error code", async () => {
     const failingUploadAdapter: DeterministicPhaseAdapter = {
+      runIdleLatency: (options) =>
+        new SyntheticMeasurementAdapter().runIdleLatency(options),
       async runPhase(options) {
         if (options.phase === "upload") {
           throw new Error("upload endpoint rejected the body");
@@ -662,6 +664,8 @@ describe("@comet-speedtest/core engine", () => {
   it("falls back to xhr upload when fetch-stream upload fails at runtime", async () => {
     let uploadAttempts = 0;
     const runtimeFallbackAdapter: DeterministicPhaseAdapter = {
+      runIdleLatency: (options) =>
+        new SyntheticMeasurementAdapter().runIdleLatency(options),
       async runPhase(options) {
         if (options.phase === "upload") {
           uploadAttempts += 1;
@@ -711,6 +715,8 @@ describe("@comet-speedtest/core engine", () => {
 
   it("preserves completed phase diagnostics on a stopped partial run", async () => {
     const adapter: DeterministicPhaseAdapter = {
+      runIdleLatency: (options) =>
+        new SyntheticMeasurementAdapter().runIdleLatency(options),
       async runPhase(options) {
         if (options.phase === "download") {
           return new SyntheticMeasurementAdapter().runPhase(options);
@@ -814,6 +820,8 @@ describe("@comet-speedtest/core engine", () => {
       workerErrors: [],
     };
     const adapter: DeterministicPhaseAdapter = {
+      runIdleLatency: (options) =>
+        new SyntheticMeasurementAdapter().runIdleLatency(options),
       async runPhase(options) {
         if (options.phase === "upload") {
           throw new PartialThroughputPhaseError("Run aborted", partialUpload);
