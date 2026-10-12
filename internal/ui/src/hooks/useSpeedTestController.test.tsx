@@ -1,5 +1,5 @@
 import type { NormalizedSpeedTestConfig } from "@comet-speedtest/config";
-import { act } from "react";
+import { act, Activity, StrictMode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -15,22 +15,13 @@ vi.mock("@comet-speedtest/core", () => ({
   }),
 }));
 
-type EventHandler = (event: {
-  sample: {
-    phase: "download";
-    startedAtMs: number;
-    endedAtMs: number;
-    durationMs: number;
-    bytes: number;
-    bitsPerSecond: number;
-    warmup: boolean;
-    workerBreakdown: Array<{ workerId: string; bytes: number }>;
-  };
-}) => void;
+type EventHandler = (event: unknown) => void;
 
 class MockEngine {
   readonly stop = vi.fn();
   readonly handlers = new Map<string, Set<EventHandler>>();
+  runCount = 0;
+  private status: "idle" | "running" | "complete" | "error" = "idle";
   private resolveRun: ((outcome: unknown) => void) | null = null;
 
   constructor(private readonly config: NormalizedSpeedTestConfig) {}
@@ -41,7 +32,7 @@ class MockEngine {
 
   getState() {
     return {
-      status: "idle",
+      status: this.status,
       phase: null,
       runId: null,
       startedAt: null,
@@ -60,31 +51,58 @@ class MockEngine {
     return () => handlers.delete(handler);
   }
 
+  // Like the real engine, a second run is rejected until the first settles.
   async run(): Promise<unknown> {
+    if (this.status === "running") {
+      throw { code: "aborted", message: "A speed test run is already active." };
+    }
+    this.runCount += 1;
+    this.status = "running";
+    this.emit("start", { type: "start" });
     return new Promise((resolve) => {
       this.resolveRun = resolve;
     });
   }
 
-  emitSample(): void {
-    for (const handler of this.handlers.get("sample") ?? []) {
-      handler({
-        sample: {
-          phase: "download",
-          startedAtMs: 0,
-          endedAtMs: 1,
-          durationMs: 1,
-          bytes: 1,
-          bitsPerSecond: 8,
-          warmup: false,
-          workerBreakdown: [{ workerId: "worker-1", bytes: 1 }],
-        },
-      });
+  emit(type: string, event: unknown): void {
+    for (const handler of this.handlers.get(type) ?? []) {
+      handler(event);
     }
   }
 
+  emitSample(phase: "download" | "upload" = "download"): void {
+    this.emit("sample", {
+      type: "sample",
+      sample: {
+        phase,
+        startedAtMs: 0,
+        endedAtMs: 1,
+        durationMs: 1,
+        bytes: 1,
+        bitsPerSecond: 8,
+        warmup: false,
+        workerBreakdown: [{ workerId: "worker-1", bytes: 1 }],
+      },
+    });
+  }
+
   complete(): void {
-    this.resolveRun?.({ ok: false, error: { code: "aborted" }, partial: null });
+    const error = { code: "aborted" };
+    this.settle("error", { ok: false, error, partial: null });
+    this.emit("error", { type: "error", error });
+  }
+
+  succeed(runId: string): void {
+    const result = { runId };
+    this.settle("complete", { ok: true, result });
+    this.emit("result", { type: "result", result });
+  }
+
+  // Like the real engine, the state settles before the terminal event fires.
+  private settle(status: "complete" | "error", outcome: unknown): void {
+    this.status = status;
+    this.resolveRun?.(outcome);
+    this.resolveRun = null;
   }
 }
 
@@ -98,6 +116,21 @@ describe("useSpeedTestController", () => {
     return null;
   }
 
+  function mount(): void {
+    host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+  }
+
+  // Wrapped so awaiting `startRun` doesn't also await the run itself.
+  async function startRun(): Promise<{ run: Promise<void> }> {
+    let run!: Promise<void>;
+    await act(async () => {
+      run = controller.start();
+    });
+    return { run };
+  }
+
   afterEach(() => {
     act(() => root.unmount());
     host.remove();
@@ -105,27 +138,17 @@ describe("useSpeedTestController", () => {
   });
 
   it("stops the engine that owns an active run when config changes", async () => {
-    host = document.createElement("div");
-    document.body.append(host);
-    root = createRoot(host);
-    const initialConfig = config("one");
-    const nextConfig = config("two");
-
+    mount();
     await act(async () => {
-      root.render(<Harness config={initialConfig} />);
+      root.render(<Harness config={config("one")} />);
     });
-    let startPromise: Promise<void>;
+    const { run } = await startRun();
     await act(async () => {
-      startPromise = controller.start();
-    });
-    await act(async () => {
-      root.render(<Harness config={nextConfig} />);
+      root.render(<Harness config={config("two")} />);
     });
 
     expect(engines).toHaveLength(2);
-    expect(engines[0]?.stop).toHaveBeenCalledWith(
-      "Config changed while the run was active.",
-    );
+    expect(engines[0]?.stop).toHaveBeenCalledOnce();
     expect(engines[1]?.stop).not.toHaveBeenCalled();
 
     engines[0]?.emitSample();
@@ -133,8 +156,167 @@ describe("useSpeedTestController", () => {
 
     engines[0]?.complete();
     await act(async () => {
-      await startPromise;
+      await run;
     });
+  });
+
+  it("ignores result and error events from a run superseded by a config change", async () => {
+    mount();
+    await act(async () => {
+      root.render(<Harness config={config("one")} />);
+    });
+    await startRun();
+    await act(async () => {
+      root.render(<Harness config={config("two")} />);
+    });
+
+    await act(async () => {
+      engines[0]?.emit("error", { type: "error", error: { code: "aborted" } });
+      engines[0]?.emit("result", { type: "result", result: { runId: "old" } });
+    });
+
+    expect(controller.error).toBeNull();
+    expect(controller.result).toBeNull();
+  });
+
+  it("stops the active run on unmount, including under StrictMode", async () => {
+    mount();
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <Harness config={config("one")} />
+        </StrictMode>,
+      );
+    });
+    await startRun();
+    expect(engines[0]?.stop).not.toHaveBeenCalled();
+
+    act(() => root.unmount());
+
+    expect(engines[0]?.stop).toHaveBeenCalledOnce();
+    // afterEach unmounts again; give it a fresh root.
+    root = createRoot(host);
+  });
+
+  it("leaves running once a run disposed by an effect re-run settles", async () => {
+    mount();
+    const render = (mode: "visible" | "hidden") =>
+      act(async () => {
+        root.render(
+          <Activity mode={mode}>
+            <Harness config={config("one")} />
+          </Activity>,
+        );
+      });
+    await render("visible");
+    await startRun();
+    // Hiding disposes the run; showing again re-runs the effect on the same engine.
+    await render("hidden");
+    await render("visible");
+    const engine = engines[0]!;
+    expect(engines).toHaveLength(1);
+    expect(engine.stop).toHaveBeenCalledOnce();
+
+    await act(async () => engine.complete());
+    expect(controller.state.status).toBe("error");
+
+    await startRun();
+    expect(engine.runCount).toBe(2);
+    expect(controller.state.status).toBe("running");
+  });
+
+  it("keeps a finished run on screen when the effect re-runs on the same engine", async () => {
+    mount();
+    const render = (mode: "visible" | "hidden") =>
+      act(async () => {
+        root.render(
+          <Activity mode={mode}>
+            <Harness config={config("one")} />
+          </Activity>,
+        );
+      });
+    await render("visible");
+    await startRun();
+    await act(async () => engines[0]!.succeed("r1"));
+    expect(controller.result?.runId).toBe("r1");
+
+    await render("hidden");
+    await render("visible");
+
+    expect(controller.state.status).toBe("complete");
+    expect(controller.result?.runId).toBe("r1");
+  });
+
+  function AutoStartHarness({ config }: { config: NormalizedSpeedTestConfig }) {
+    controller = useSpeedTestController(config);
+    const { start } = controller;
+    useEffect(() => {
+      void start();
+    }, [start]);
+    return null;
+  }
+
+  async function mountAutoStart(): Promise<MockEngine> {
+    mount();
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <AutoStartHarness config={config("one")} />
+        </StrictMode>,
+      );
+    });
+    return engines.at(-1)!;
+  }
+
+  it("starts from a mount effect under StrictMode once the stopped run settles", async () => {
+    const engine = await mountAutoStart();
+    // StrictMode's simulated unmount stopped the first run, which hasn't settled.
+    expect(engine.stop).toHaveBeenCalledOnce();
+    expect(engine.runCount).toBe(1);
+
+    await act(async () => engine.complete());
+    expect(engine.runCount).toBe(2);
+    expect(controller.state.status).toBe("running");
+
+    await act(async () => engine.succeed("second"));
+    expect(controller.result).toEqual({ runId: "second" });
+    expect(controller.state.status).toBe("complete");
+  });
+
+  it("stops a run that was waiting for the engine as soon as it starts", async () => {
+    const engine = await mountAutoStart();
+    act(() => controller.stop());
+
+    await act(async () => engine.complete());
+
+    expect(engine.runCount).toBe(2);
+    // Disposal, the user's stop while waiting, then the started run.
+    expect(engine.stop).toHaveBeenCalledTimes(3);
+  });
+
+  it("drops the samples of a phase the engine resets", async () => {
+    mount();
+    await act(async () => {
+      root.render(<Harness config={config("one")} />);
+    });
+    await startRun();
+
+    await act(async () => {
+      engines[0]?.emitSample("download");
+      engines[0]?.emitSample("upload");
+      engines[0]?.emitSample("upload");
+    });
+    expect(controller.samples).toHaveLength(3);
+
+    await act(async () => {
+      engines[0]?.emit("phase-reset", {
+        type: "phase-reset",
+        phase: "upload",
+        reason: "Falling back to xhr-chunked.",
+      });
+    });
+
+    expect(controller.samples.map((sample) => sample.phase)).toEqual(["download"]);
   });
 });
 
