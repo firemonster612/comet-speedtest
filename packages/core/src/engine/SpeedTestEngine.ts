@@ -526,8 +526,7 @@ export class SpeedTestEngine implements SpeedTestEngineInterface {
     }
   }
 
-  /** The adapter that replaces the network for this run, or null for a real run. */
-  /** Only an explicit adapter (from `@comet-speedtest/core/testing`) replaces the network. */
+  /** The explicit test adapter that replaces the network, or null for a real run. */
   private measurementAdapter(): DeterministicPhaseAdapter | null {
     return this.adapter ?? null;
   }
