@@ -42,30 +42,73 @@ export interface PhaseEventSink {
   latency: (sample: LatencySample) => void;
 }
 
+/**
+ * Stands in for the network: the engine takes idle latency and every throughput
+ * phase from the adapter and skips the reachability probe.
+ */
 export interface DeterministicPhaseAdapter {
-  runPhase(options: {
-    phase: ThroughputPhase;
-    config: NormalizedSpeedTestConfig;
-    signal: AbortSignal;
-    loadedLatency: boolean;
-    emit: PhaseEventSink;
-  }): Promise<ThroughputPhaseResult>;
+  runIdleLatency(options: IdleLatencyOptions): Promise<LatencyResult>;
+  runPhase(options: PhaseOptions): Promise<ThroughputPhaseResult>;
 }
 
+export interface IdleLatencyOptions {
+  config: NormalizedSpeedTestConfig;
+  signal: AbortSignal;
+  emit: (sample: LatencySample) => void;
+}
+
+export interface PhaseOptions {
+  phase: ThroughputPhase;
+  config: NormalizedSpeedTestConfig;
+  signal: AbortSignal;
+  loadedLatency: boolean;
+  emit: PhaseEventSink;
+}
+
+/** Idle probes take 12, 13 and 14 ms in turn, so jitter is non-zero. */
+const SYNTHETIC_IDLE_LATENCY_MS = 12;
+
+/** Lets `stop()` and test timers run between steps, as they would during a real run. */
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Fixed measurements on a virtual clock, so identical config gives identical
+ * results however fast the host runs.
+ */
 export class SyntheticMeasurementAdapter implements DeterministicPhaseAdapter {
-  async runPhase(options: {
-    phase: ThroughputPhase;
-    config: NormalizedSpeedTestConfig;
-    signal: AbortSignal;
-    loadedLatency: boolean;
-    emit: PhaseEventSink;
-  }): Promise<ThroughputPhaseResult> {
+  async runIdleLatency(options: IdleLatencyOptions): Promise<LatencyResult> {
+    const latencyConfig = options.config.test.latency;
+    const latency = new LatencyCollector(options.emit);
+    const requests = latencyConfig.enabled ? latencyConfig.idleRequests : 0;
+    let now = 0;
+    for (let index = 0; index < requests; index += 1) {
+      await yieldToEventLoop();
+      if (options.signal.aborted) {
+        throw new Error("Run aborted");
+      }
+      const latencyMs = SYNTHETIC_IDLE_LATENCY_MS + (index % 3);
+      latency.record({
+        phase: "idle",
+        startedAtMs: now,
+        endedAtMs: now + latencyMs,
+        latencyMs,
+        ok: true,
+      });
+      now += latencyMs;
+    }
+    return latency.aggregate();
+  }
+
+  async runPhase(options: PhaseOptions): Promise<ThroughputPhaseResult> {
     const sampling = options.config.test.sampling;
+    let now = 0;
     const run = new MeasurementRun(
       options.phase,
       sampling,
       options.config.result.includeRawSamples,
-      nowMs,
+      () => now,
     );
     const latency = new LatencyCollector(options.emit.latency);
     const bytesPerWorker = options.phase === "download" ? 1_250_000 : 625_000;
@@ -76,16 +119,16 @@ export class SyntheticMeasurementAdapter implements DeterministicPhaseAdapter {
       index < run.totalSamples && !options.signal.aborted;
       index += 1
     ) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-      const sampleAt = nowMs() + sampling.intervalMs;
+      await yieldToEventLoop();
+      now += sampling.intervalMs;
       for (let worker = 0; worker < workerCount; worker += 1) {
         run.record({
           workerId: `${options.phase}-${worker}`,
           bytes: bytesPerWorker,
-          at: sampleAt,
+          at: now,
         });
       }
-      const sample = run.sample(sampleAt);
+      const sample = run.sample(now);
       options.emit.sample(sample);
       if (options.loadedLatency && options.config.test.latency.enabled) {
         latency.record({

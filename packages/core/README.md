@@ -6,7 +6,7 @@ throughput, latency under load, bufferbloat grading, diagnostics, and final
 scoring. You bring the config and the UI; the package does the measurement.
 
 This is the npm quick reference. The full guide lives in
-[`docs/library/core.md`](../../docs/library/core.md).
+[`docs/library/core.md`](https://github.com/firemonster612/comet-speedtest/blob/main/docs/library/core.md).
 
 ## Install
 

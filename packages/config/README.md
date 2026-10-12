@@ -5,7 +5,7 @@ package owns the JSON-compatible deployment input used by the production app and
 by custom library clients.
 
 This is the npm quick reference. The full guide lives in
-[`docs/library/config.md`](../../docs/library/config.md).
+[`docs/library/config.md`](https://github.com/firemonster612/comet-speedtest/blob/main/docs/library/config.md).
 
 ## Install
 

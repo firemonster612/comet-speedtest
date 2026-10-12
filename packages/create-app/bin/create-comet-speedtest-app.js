@@ -6,9 +6,44 @@ import { fileURLToPath } from "node:url";
 
 import { cancel, confirm, isCancel, select, text } from "@clack/prompts";
 
+import {
+  endpointContractUrl,
+  nginxExampleUrl,
+  sameOriginTargets,
+} from "./endpoint-setup.js";
+
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const templatesRoot = resolve(packageRoot, "dist-templates");
 const supportedPackageManagers = ["pnpm", "npm", "yarn", "bun"];
+const defaultBrandName = "Comet Speed Test";
+const helpText = `Usage: create-comet-speedtest-app [project-name] [options]
+
+Creates a Comet speed test project in ./<project-name>. In an interactive
+terminal it prompts for anything a flag does not set. Otherwise it uses the
+defaults below, and project-name is required.
+
+Modes (default: --deploy):
+  --deploy, --deployable   Deployable configured app with no source code
+  --source                 Source app with the Comet UI copied into src/
+  --core                   Minimal custom app using the core library
+
+Options:
+  --pm, --package-manager <name>
+                           ${supportedPackageManagers.join(", ")}. Default: the package manager
+                           running this command, otherwise pnpm
+  --nginx                  Use same-origin NGINX endpoints and copy the NGINX
+                           example into deploy/nginx
+  --no-nginx               Do not copy the NGINX example
+  --install, --no-install  Install dependencies. Default: --install
+  --git, --no-git          Initialize a git repository. Default: --git
+  -h, --help               Show this help
+
+Non-interactive runs also use the brand name "${defaultBrandName}", no result
+submission, and, without --nginx, placeholder endpoint URLs in
+public/comet.config.json that you replace with your own endpoints.
+
+Example:
+  create-comet-speedtest-app my-speedtest --deploy --nginx --pm pnpm --no-git`;
 
 class PromptCancelledError extends Error {
   constructor() {
@@ -27,7 +62,13 @@ main().catch((error) => {
 });
 
 async function main() {
-  const cli = parseArgs(process.argv.slice(2));
+  const args = process.argv.slice(2);
+  // Help wins over any other flag, including ones that would fail to parse.
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(helpText);
+    return;
+  }
+  const cli = parseArgs(args);
   const prompt = createPrompt();
   const projectName = cli.target ?? (await promptText(prompt, "Project name"));
   if (!projectName) {
@@ -39,8 +80,8 @@ async function main() {
     (await promptPackageManager(prompt, detectPackageManager() ?? "pnpm"));
   const brandName =
     mode === "core"
-      ? "Comet Speed Test"
-      : await promptText(prompt, "Brand name", "Comet Speed Test");
+      ? defaultBrandName
+      : await promptText(prompt, "Brand name", defaultBrandName);
   const endpoints = await promptEndpoints(prompt, cli.endpointKind);
   const result = await promptResultSubmission(prompt);
   const includeNginx =
@@ -76,7 +117,13 @@ async function main() {
     run(packageManager, ["install"], root);
   }
 
-  printNextSteps(projectName, install, packageManager);
+  printNextSteps({
+    projectName,
+    installed: install,
+    packageManager,
+    endpoints,
+    includeNginx,
+  });
 }
 
 function parseArgs(args) {
@@ -91,7 +138,10 @@ function parseArgs(args) {
   };
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg === "--source") {
+    if (arg === "--") {
+      // Package-manager `create` commands may forward the separator itself.
+      continue;
+    } else if (arg === "--source") {
       cli.mode = "source";
     } else if (arg === "--deploy" || arg === "--deployable") {
       cli.mode = "deployable";
@@ -114,10 +164,12 @@ function parseArgs(args) {
       cli.packageManager = requireValue(args, index, arg);
       validatePackageManager(cli.packageManager);
       index += 1;
-    } else if (!arg.startsWith("--") && !cli.target) {
+    } else if (!arg.startsWith("-") && !cli.target) {
       cli.target = arg;
     } else {
-      throw new Error(`Unknown argument "${arg}".`);
+      throw new Error(
+        `Unknown argument "${arg}". Run create-comet-speedtest-app --help for usage.`,
+      );
     }
   }
   return cli;
@@ -178,7 +230,7 @@ async function promptEndpoints(prompt, endpointKind) {
     "How will speed test endpoints be hosted?",
     "later",
     [
-      { value: "later", label: "Configure later" },
+      { value: "later", label: "Configure later (writes placeholder URLs)" },
       { value: "nginx", label: "Same-origin NGINX" },
       { value: "external", label: "Existing external endpoint URLs" },
     ],
@@ -293,11 +345,7 @@ function endpointConfig(endpoints) {
       ...(endpoints.latency ? { latency: endpoints.latency } : {}),
     };
   }
-  return {
-    download: "/speedtest/download/large.bin",
-    upload: "/speedtest/upload",
-    latency: "/speedtest/latency",
-  };
+  return sameOriginTargets;
 }
 
 async function replacePlaceholders(root, replacements) {
@@ -411,10 +459,34 @@ function run(command, args, cwd) {
   }
 }
 
-function printNextSteps(projectName, installed, packageManager) {
+function printNextSteps({
+  projectName,
+  installed,
+  packageManager,
+  endpoints,
+  includeNginx,
+}) {
+  const targets = Object.entries(endpointConfig(endpoints));
+  const urlWidth = Math.max(...targets.map(([, url]) => url.length));
+  const placeholderNote = endpoints.kind === "later" ? "  (placeholder)" : "";
+  const targetLines = targets
+    .map(([name, url]) =>
+      `  ${name.padEnd(10)}${url.padEnd(urlWidth)}${placeholderNote}`.trimEnd(),
+    )
+    .join("\n");
   const installStep = installed ? "" : `\n  ${packageManager} install`;
   console.log(`
 Created ${projectName}.
+
+Speed test endpoints (targets in public/comet.config.json):
+${targetLines}
+
+A test needs real servers behind these URLs. The dev and preview servers only
+serve the app, and check and build never contact the endpoints, so they pass
+even when the endpoints are missing.
+  Endpoint contract: ${endpointContractUrl}
+  NGINX example:     ${includeNginx ? "deploy/nginx" : nginxExampleUrl}
+README.md has the full setup steps.
 
 Next steps:
   cd ${projectName}${installStep}

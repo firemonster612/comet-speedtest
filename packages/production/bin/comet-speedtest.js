@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { createReadStream } from "node:fs";
-import { access, cp, mkdir, readFile, rm, stat } from "node:fs/promises";
+import { access, cp, readFile, rm, stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import { dirname, extname, join, relative, resolve, sep } from "node:path";
+import { dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { validateConfig } from "@comet-speedtest/config";
@@ -62,16 +62,21 @@ async function main() {
       printHelp();
       return;
     default:
-      throw new Error(`Unknown command "${command}". Run comet-speedtest help.`);
+      throw new Error(`Unknown command "${command}". Run comet-speedtest --help.`);
   }
 }
 
 function parseArgs(args) {
   const options = {};
   let command = "help";
+  let helpRequested = false;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (!arg.startsWith("--") && command === "help") {
+    if (arg === "--help" || arg === "-h") {
+      helpRequested = true;
+      continue;
+    }
+    if (!arg.startsWith("-") && command === "help") {
       command = arg;
       continue;
     }
@@ -84,11 +89,11 @@ function parseArgs(args) {
       index += 1;
       continue;
     }
-    if (arg.startsWith("--")) {
-      throw new Error(`Unknown option "${arg}".`);
+    if (arg.startsWith("-")) {
+      throw new Error(`Unknown option "${arg}". Run comet-speedtest --help.`);
     }
   }
-  return { command, options };
+  return { command: helpRequested ? "help" : command, options };
 }
 
 async function build(root) {
@@ -241,12 +246,19 @@ function printHelp() {
 
 Commands:
   dev       Serve the bundled production app overlaid with ./public
-  check     Validate ./public/comet.config.json
-  build     Build static files into ./dist
+  check     Validate the structure of ./public/comet.config.json
+  build     Check, then build static files into ./dist
   preview   Serve ./dist
+  help      Show this help (also -h, --help)
 
 Options:
   --host <host>   Host for dev/preview. Default: 0.0.0.0
   --port <port>   Port for dev/preview. Default: 4173
-  --root <path>   Project root. Default: current directory`);
+  --root <path>   Project root. Default: current directory
+
+dev and preview serve static files only. The speed test endpoints in
+comet.config.json need their own server, and check does not contact them.
+
+Example:
+  comet-speedtest dev --port 5173 --root ./my-speedtest`);
 }

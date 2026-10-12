@@ -36,7 +36,7 @@
   "scripts": {
     "build": "node scripts/prepare-dist-app.mjs",
     "prepack": "pnpm --filter @comet-speedtest/production-app build && pnpm build",
-    "test": "node --check bin/comet-speedtest.js && node --check scripts/prepare-dist-app.mjs",
+    "test": "pnpm --filter @comet-speedtest/config build && node --test test/*.test.js",
     "typecheck": "node --check bin/comet-speedtest.js && node --check scripts/prepare-dist-app.mjs"
   },
   "dependencies": {

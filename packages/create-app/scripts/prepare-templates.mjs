@@ -3,6 +3,12 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  endpointContractUrl,
+  nginxExampleUrl,
+  sameOriginTargets,
+} from "../bin/endpoint-setup.js";
+
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workspaceRoot = resolve(packageRoot, "../..");
 const outputRoot = resolve(packageRoot, "dist-templates");
@@ -14,6 +20,42 @@ const versions = {
   ),
 };
 const catalog = await workspaceCatalog();
+// Every mode reads endpoints from public/comet.config.json and no generated dev
+// server provides them, so each README carries the same setup steps.
+const endpointSetupSection = `## Speed test endpoints
+
+A test measures against the URLs under \`targets\` in
+\`public/comet.config.json\`. Each one needs a real server behind it:
+
+- \`download\` serves a large static file.
+- \`upload\` accepts a \`POST\` body and discards it.
+- \`latency\` answers a \`HEAD\` or \`GET\` quickly. It is optional and defaults
+  to the download URL.
+
+The [endpoint contract](${endpointContractUrl}) has the details, including CORS
+for endpoints on another origin.
+
+The \`dev\` and \`preview\` servers only serve the app. They do not provide these
+endpoints, so a test cannot produce real results until the endpoints exist.
+\`check\` and \`build\` never contact the endpoints, so they pass even when the
+endpoints are missing.
+
+If you chose "Configure later" when creating the project (the default), the
+\`targets\` URLs are placeholders for same-origin endpoints:
+
+\`\`\`json
+${JSON.stringify(sameOriginTargets, null, 2)}
+\`\`\`
+
+Next steps:
+
+1. Point \`targets\` at endpoints you already host, or serve the placeholder
+   paths from the web server that hosts the app. The optional
+   [NGINX example](${nginxExampleUrl}) does this. It is in \`deploy/nginx\` if
+   you chose it when creating the project.
+2. Run \`__RUN_SCRIPT__ check\`, then \`__RUN_SCRIPT__ build\`, and deploy \`dist\`.
+3. Open the deployed app and run a test to confirm the endpoints respond.
+`;
 const oxfmtConfig = await generatedOxfmtConfig();
 
 await rm(outputRoot, { force: true, recursive: true });
@@ -61,9 +103,16 @@ __RUN_SCRIPT__ build
 __RUN_SCRIPT__ preview
 \`\`\`
 
+- \`dev\` serves the bundled Comet app with your \`public\` files on top.
+- \`check\` validates the structure of \`public/comet.config.json\`. It does not
+  contact the endpoints.
+- \`build\` copies the app and your \`public\` files into \`dist\`.
+- \`preview\` serves the built app locally.
+
 Edit \`public/comet.config.json\` to change branding, endpoints, and result
 submission.
-`,
+
+${endpointSetupSection}`,
   );
   await writeDefaultAssets(root);
 }
@@ -260,22 +309,7 @@ __RUN_SCRIPT__ preview
 - \`public/logo.svg\` and \`public/favicon.svg\` are the default brand assets.
 - \`deploy/nginx\` is present when you chose the NGINX examples during creation.
 
-## Runtime config
-
-Edit \`public/comet.config.json\` before deploying. Same-origin NGINX projects
-use these default endpoints:
-
-\`\`\`json
-{
-  "download": "/speedtest/download/large.bin",
-  "upload": "/speedtest/upload",
-  "latency": "/speedtest/latency"
-}
-\`\`\`
-
-For real deployments, make sure those URLs point at endpoints that can serve a
-large download file, discard upload bodies, and return a small latency response.
-
+${endpointSetupSection}
 ## Source ownership
 
 This template intentionally gives you the UI source instead of depending on a
@@ -348,22 +382,7 @@ __RUN_SCRIPT__ preview
 - \`public/logo.svg\` and \`public/favicon.svg\` are placeholder brand assets.
 - \`deploy/nginx\` is present when you chose the NGINX examples during creation.
 
-## Runtime config
-
-Edit \`public/comet.config.json\` before using the app for real tests. Same-origin
-NGINX projects use these default endpoints:
-
-\`\`\`json
-{
-  "download": "/speedtest/download/large.bin",
-  "upload": "/speedtest/upload",
-  "latency": "/speedtest/latency"
-}
-\`\`\`
-
-For real deployments, make sure those URLs point at endpoints that can serve a
-large download file, discard upload bodies, and return a small latency response.
-
+${endpointSetupSection}
 ## Building your UI
 
 Start in \`src/main.ts\`. Keep the config loading and \`createSpeedTest(config)\`

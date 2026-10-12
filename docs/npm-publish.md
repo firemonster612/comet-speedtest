@@ -31,12 +31,16 @@ pnpm --filter @comet-speedtest/create-app publish --dry-run
 `scripts/test-packages.mjs`. It checks what users install rather than the
 workspace source:
 
-1. Builds config and core, then runs `pnpm pack` for all four packages into a
-   temp directory. The production and create-app `prepack` scripts rebuild the
-   bundled app and templates.
+1. Deletes the config and core `dist` folders, then runs `pnpm pack` for all
+   four packages into a temp directory. Every package has a `prepack` script
+   that builds what it ships, and config and core also fail the pack if any
+   `main`, `types` or `exports` target is missing
+   (`scripts/check-package-entries.mjs`).
 2. Installs the config and core tarballs into a consumer project and
    type-checks `docs/npm-smoke/consumer.ts` with `NodeNext` resolution and
-   `skipLibCheck` off, then imports every `exports` entry in Node.
+   `skipLibCheck` off, then imports every `exports` entry in Node. It also
+   checks that every source listed in the installed declaration maps is in the
+   package.
 3. Runs the packed `create-comet-speedtest-app` binary in `--deploy --nginx`,
    `--source` and `--core` modes.
 4. Installs each generated project and runs its `check` script. Source and core
