@@ -1,4 +1,4 @@
-import { composeAbortSignal } from "./abortSignals";
+import { composeAbortSignal } from "../shared/abortSignals";
 import type {
   TargetProfile,
   TargetProfileInput,
@@ -53,6 +53,7 @@ async function measureLatency(
   const abort = composeAbortSignal({
     ...(options.signal ? { signal: options.signal } : {}),
     ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+    timeoutMessage: "Target selection timed out.",
   });
   const startedAt = options.now();
   try {

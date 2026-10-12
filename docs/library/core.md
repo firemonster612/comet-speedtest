@@ -135,8 +135,17 @@ The events and their payloads:
 - `sample` - `{ sample }`. A throughput sample. `sample.bitsPerSecond` is the
   instantaneous rate; `sample.warmup` is `true` for samples taken before
   measurement officially starts.
+- `phase-reset` - `{ phase, reason }`. A throughput phase is starting over, so
+  discard every `sample`, `window`, and `latency-sample` you already received for
+  `phase`. Today this happens when fetch-stream upload fails at runtime and the
+  engine retries the upload on `xhr-chunked` (see "Runtime upload fallback"
+  below). `reason` matches the entry added to `diagnostics.fallbackReasons`.
+  `getState()` already reflects the reset when the event fires, and no event from
+  the failed attempt arrives after it.
 - `window` - `{ window }`. A completed throughput window (an aggregate of several
-  samples). `window.averageBitsPerSecond` is the windowed rate.
+  samples). `window.averageBitsPerSecond` is the window's total bytes over its
+  total duration, so a sample that ran long because a timer fired late counts
+  for more than a short one.
 - `latency-sample` - `{ sample }`. One latency probe, idle or under load.
   `sample.ok` is `false` for a probe that timed out or failed.
 - `phase-complete` - `{ phase, result }`. One phase finished. `result` is a
@@ -175,7 +184,8 @@ const outcome = await engine.run();
 
 if (!outcome.ok) {
   // error.code is a known string: "target-unreachable", "download-failed",
-  // "upload-failed", "latency-failed", "aborted", "timeout", and others.
+  // "upload-failed", "latency-failed", "aborted", "timeout", "internal-error",
+  // and others.
   console.error(outcome.error.code, outcome.error.message);
 
   // partial holds whatever phases finished before the failure, or null.
@@ -200,7 +210,23 @@ engine.stop("User stopped the run.");
 
 `stop` ends the current run; the in-flight `run()` promise resolves to an
 `{ ok: false }` outcome with an `aborted` error and whatever partial result was
-collected.
+collected. This holds even when you call `stop` from an event listener after the
+last measured phase (for example in `phase-complete` for upload): the run ends as
+aborted, never as a success, and its finished phases are in the partial result.
+A listener for `result` or `error` may start the next run; `stop` then applies to
+that new run. Listeners registered after that one still receive the earlier
+run's `result` or `error`, after the new run's `start` event has fired, so key
+results by `runId` rather than assuming the last `start` owns them.
+
+Listener exceptions never affect a run. Like DOM `EventTarget` dispatch, a
+listener that throws is reported as an uncaught error (through `reportError`
+where the platform has it), the remaining listeners still receive the event,
+and the run's measurements and outcome are unchanged. This holds for every
+event. To end a run from a listener, call `stop`.
+
+`internal-error` means an untyped failure outside any measured phase, before the
+first phase starts or while finalizing the result. A failure inside a phase gets
+that phase's code (`latency-failed`, `download-failed`, `upload-failed`).
 
 ## Selecting phases per run
 
@@ -344,9 +370,30 @@ a support ticket or a bug report:
 - `requestedTransports` / `actualTransports` - the transport you asked for versus
   the one that ran (`"fetch-stream"` or `"xhr-chunked"`), per direction.
 - `fallbackReasons` - why a transport fell back, if it did.
+
+### Runtime upload fallback
+
+Some browsers advertise fetch request streaming but reject it on the wire. Chrome,
+for example, refuses streaming uploads over HTTP/1.1, so on a plain HTTP
+deployment fetch-stream upload fails on every run. When `test.upload.allowFallback`
+is on and XHR upload is available, the engine reruns the upload phase on
+`xhr-chunked`. Before the retry it emits `phase-reset` for `upload`, because the
+samples the failed attempt emitted do not describe the measurement that counts.
+
+When the `xhr-chunked` retry succeeds, the engine instance remembers the
+fetch-stream failure. Later runs on the same engine go straight to `xhr-chunked`
+and record a `fallbackReasons` entry saying that fetch upload streaming failed on
+an earlier run, including the original error message. Create a new engine to try
+fetch-stream again. When the retry fails too, the problem was not the transport
+(a server error, for example), so nothing is remembered and the next run tries
+fetch-stream again.
+
 - `workersRequested` / `workersStarted` - parallel worker counts per direction.
 - `capabilityReport` - which browser features were available (streaming, workers,
-  abort support).
+  abort support). `fetchRequestStreaming` is true only when the browser really
+  streams request bodies, so Firefox and Safari report `false` and upload uses
+  `xhr-chunked`. Chrome reports `true` but refuses streaming uploads over HTTP/1.1;
+  that case is handled by the runtime upload fallback.
 - `configSource` - where the config came from.
 - `errors` - any `SpeedTestError`s collected during the run, including
   recoverable ones that did not fail the whole run.
@@ -412,10 +459,13 @@ The `rawSamples` option controls whether the copied result keeps its per-sample
 and per-window arrays:
 
 - `"strip"` removes `samples` and `windows` from the `download` and `upload`
-  results in the copy. `privacy.rawSamples` becomes `"stripped"`.
+  results in the copy, and empties `samples` in each latency bucket (`idle`,
+  `underDownloadLoad`, `underUploadLoad`). The summary numbers stay.
+  `privacy.rawSamples` becomes `"stripped"`.
 - `"preserve"` (the default when you do not pass the option, behaving as
   preserve) keeps them. `privacy.rawSamples` becomes `"included"` if the result
-  actually had raw samples, or `"not-present"` if it never had any to begin with.
+  actually had raw samples (throughput or latency), or `"not-present"` if it never
+  had any to begin with.
 
 Prefer `"strip"` for anything you submit or store at volume. Raw samples make
 payloads larger and describe the moment-to-moment behavior of the connection in
@@ -523,13 +573,28 @@ interface QualityScore {
 ```
 
 Each activity weights the underlying metrics differently - streaming leans on
-download throughput, while gaming and video calling lean on latency, jitter, and
-bufferbloat. `limitingFactors` names what dragged a score down, which is useful
+download throughput, while gaming and video calling lean on latency and jitter. `limitingFactors` names what dragged a score down, which is useful
 for telling a user _why_ their connection is only "fair" for gaming.
 `quality.inputs` echoes the raw numbers (download/upload Mbps, idle and loaded
-latency, jitter, bufferbloat grade) the scores were derived from. A score is
-`null` and the grade is `"unknown"` when the run did not produce the inputs that
-activity needs.
+latency, jitter, bufferbloat grade) the scores were derived from.
+
+An activity needs every input it is scored from:
+
+| Score          | Required inputs                                                     |
+| -------------- | ------------------------------------------------------------------- |
+| `webBrowsing`  | download, idle latency, loaded latency, bufferbloat                 |
+| `gaming`       | download, upload, idle latency, loaded latency, jitter, bufferbloat |
+| `streaming`    | download, loaded latency, jitter                                    |
+| `videoCalling` | download, upload, loaded latency, jitter                            |
+| `overall`      | all four activity scores                                            |
+
+Loaded latency needs a download or upload phase with loaded-latency probes on;
+it is the worse of the two directions. Bufferbloat needs both idle and loaded
+latency. Jitter needs idle or loaded latency. If any required input is missing,
+the score is `null`, the grade is `"unknown"`, and `explanation` lists what the
+run did not produce. A download-only run with loaded-latency probes scores
+`streaming` and leaves the other activities `"unknown"` instead of rating them
+from a subset of their inputs.
 
 `gradeBufferbloat` is also exported from the root if you want to grade
 bufferbloat numbers directly, but `result.bufferbloat` already carries the grade

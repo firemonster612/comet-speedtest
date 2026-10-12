@@ -143,4 +143,74 @@ describe("scoreConnectionQuality", () => {
     expect(quality.webBrowsing.score).toBeNull();
     expect(quality.streaming.score).toBeNull();
   });
+
+  it("scores loaded latency without the idle-latency phase", () => {
+    const quality = scoreConnectionQuality(
+      result({
+        latency: {
+          idle: null,
+          underDownloadLoad: latency(45, 6),
+          underUploadLoad: latency(40, 5),
+        },
+        bufferbloat: {
+          idleLatencyMs: null,
+          loadedLatencyMs: null,
+          addedLatencyMs: null,
+          grade: null,
+          download: null,
+          upload: null,
+        },
+      }),
+    );
+
+    expect(quality.inputs).toMatchObject({
+      idleLatencyMs: null,
+      loadedLatencyMs: 45,
+      jitterMs: 6,
+      addedLatencyMs: null,
+    });
+    expect(quality.streaming.grade).toBe("excellent");
+    expect(quality.videoCalling.grade).toBe("excellent");
+    expect(quality.webBrowsing.explanation).toBe(
+      "Web browsing quality is unknown because the run did not produce: idle latency, bufferbloat.",
+    );
+  });
+
+  it("does not score an activity from a subset of its inputs", () => {
+    const quality = scoreConnectionQuality(
+      result({
+        download: throughput(1000),
+        upload: null,
+        latency: { idle: null, underDownloadLoad: null, underUploadLoad: null },
+        bufferbloat: {
+          idleLatencyMs: null,
+          loadedLatencyMs: null,
+          addedLatencyMs: null,
+          grade: null,
+          download: null,
+          upload: null,
+        },
+      }),
+    );
+
+    for (const activity of [
+      quality.overall,
+      quality.webBrowsing,
+      quality.gaming,
+      quality.streaming,
+      quality.videoCalling,
+    ]) {
+      expect(activity).toMatchObject({
+        score: null,
+        grade: "unknown",
+        limitingFactors: [],
+      });
+    }
+    expect(quality.gaming.explanation).toBe(
+      "Gaming quality is unknown because the run did not produce: idle latency, loaded latency, jitter, upload speed, bufferbloat.",
+    );
+    expect(quality.overall.explanation).toBe(
+      "Overall quality is unknown because the run did not produce: web browsing, gaming, streaming, video calling.",
+    );
+  });
 });

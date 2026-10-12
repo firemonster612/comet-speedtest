@@ -11,6 +11,10 @@ function makeChunk(size: number): Uint8Array {
 runMeasurementWorker("start-upload", async (job, runtime) => {
   runtime.post({ type: "ready", workerId: job.workerId });
   const chunk = makeChunk(job.chunkSizeBytes);
+  // The stream pulls once on construction and again only after fetch takes the
+  // queued chunk, so a pull is proof that the previous chunk left the queue.
+  // Counting on enqueue would report a chunk fetch never read.
+  let hasEnqueued = false;
   const body = new ReadableStream<Uint8Array>(
     {
       pull(controller) {
@@ -18,14 +22,17 @@ runMeasurementWorker("start-upload", async (job, runtime) => {
           controller.close();
           return;
         }
+        if (hasEnqueued) {
+          runtime.post({
+            type: "bytes",
+            workerId: job.workerId,
+            phase: "upload",
+            bytes: chunk.byteLength,
+            at: performance.now(),
+          });
+        }
         controller.enqueue(chunk);
-        runtime.post({
-          type: "bytes",
-          workerId: job.workerId,
-          phase: "upload",
-          bytes: chunk.byteLength,
-          at: performance.now(),
-        });
+        hasEnqueued = true;
       },
     },
     {

@@ -257,6 +257,8 @@ describe("@comet-speedtest/core engine", () => {
       Response: globalThis.Response,
     };
     class MockRequest {
+      readonly headers = new Headers();
+
       constructor(_url: string, init?: RequestInit & { duplex?: string }) {
         if (init?.duplex !== "half") {
           throw new Error("missing duplex");
@@ -702,9 +704,9 @@ describe("@comet-speedtest/core engine", () => {
 
     expect(uploadAttempts).toBe(2);
     expect(result.diagnostics.actualTransports.upload).toBe("xhr-chunked");
-    expect(result.diagnostics.fallbackReasons).toContain(
-      "fetch upload streaming failed at runtime; fell back to xhr-chunked",
-    );
+    expect(result.diagnostics.fallbackReasons).toEqual([
+      "fetch upload streaming failed at runtime (fetch upload streaming requires HTTP/2); fell back to xhr-chunked",
+    ]);
   });
 
   it("preserves completed phase diagnostics on a stopped partial run", async () => {

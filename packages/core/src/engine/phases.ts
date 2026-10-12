@@ -1,4 +1,7 @@
-import type { NormalizedSpeedTestConfig } from "@comet-speedtest/config";
+import type {
+  NormalizedSamplingConfig,
+  NormalizedSpeedTestConfig,
+} from "@comet-speedtest/config";
 
 import { LatencyCollector } from "../latency/latencyProbe";
 import type {
@@ -11,6 +14,7 @@ import type {
   ThroughputResult,
 } from "../results/resultTypes";
 import { MeasurementRun } from "../sampling/measurementRun";
+import { abortableDelay } from "../shared/abortSignals";
 import { WorkerPool } from "../workers/workerPool";
 import type { WorkerEvent } from "../workers/workerProtocol";
 import { nowMs } from "./lifecycle";
@@ -175,6 +179,8 @@ export async function runWorkerPhase(options: {
   // Configurable per phase; 0 disables the early watchdog (the end-of-phase
   // zero-transfer backstop still applies).
   const firstByteTimeoutMs = options.config.test[options.phase].firstByteTimeoutMs;
+  const allWorkersFailed = (): boolean =>
+    throughputErrors.length >= throughputConfig.workers;
   let thrown: unknown = null;
   try {
     for (let worker = 0; worker < throughputConfig.workers; worker += 1) {
@@ -224,7 +230,7 @@ export async function runWorkerPhase(options: {
     const phaseStarted = nowMs();
     run.resetClock(phaseStarted);
     while (!options.signal.aborted && sampleCount < run.totalSamples) {
-      await sleep(sampling.intervalMs, options.signal);
+      await abortableDelay(sampling.intervalMs, options.signal);
       const sample = run.sample(nowMs());
       sampleCount += 1;
       options.emit.sample(sample);
@@ -237,14 +243,11 @@ export async function runWorkerPhase(options: {
           `No ${options.phase} data arrived within ${firstByteTimeoutMs} ms; the endpoint looks unreachable or isn't serving test data.`,
         );
       }
-      if (
+      const maxDurationReached =
         throughputConfig.maxDurationMs !== null &&
-        nowMs() - phaseStarted >= throughputConfig.maxDurationMs
-      ) {
+        nowMs() - phaseStarted >= throughputConfig.maxDurationMs;
+      if (allWorkersFailed() || maxDurationReached) {
         break;
-      }
-      if (throughputErrors.length >= throughputConfig.workers) {
-        throw throughputErrors[0] ?? new Error(`${options.phase} workers failed`);
       }
     }
   } catch (error) {
@@ -271,6 +274,11 @@ export async function runWorkerPhase(options: {
   if (thrown) {
     throw thrown;
   }
+  // Checked after the loop so no exit path, including maxDurationMs, can turn a
+  // phase where every worker failed into a success.
+  if (allWorkersFailed()) {
+    throw throughputErrors[0] ?? new Error(`${options.phase} workers failed`);
+  }
   // Backstop for when the phase completes its samples before the first-byte
   // watchdog could fire (e.g. a very short run): zero cumulative bytes means the
   // server never sent anything, which is a failure, not a real 0 Mbps result.
@@ -288,7 +296,12 @@ export async function runWorkerPhase(options: {
     throughputErrors,
     loadedLatency: options.loadedLatency && options.config.test.latency.enabled,
   });
-  for (const window of result.throughput.windows ?? []) {
+  if (!result.throughput.windows?.some((window) => !window.warmup)) {
+    throw new Error(
+      noMeasuredWindowMessage(options.phase, throughputConfig.maxDurationMs, sampling),
+    );
+  }
+  for (const window of result.throughput.windows) {
     options.emit.window(window);
   }
 
@@ -317,18 +330,20 @@ function buildThroughputPhaseResult(input: {
   };
 }
 
-function sleep(durationMs: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(resolve, durationMs);
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timeout);
-        reject(new Error("Run aborted"));
-      },
-      { once: true },
-    );
-  });
+function noMeasuredWindowMessage(
+  phase: ThroughputPhase,
+  maxDurationMs: number | null,
+  sampling: NormalizedSamplingConfig,
+): string {
+  const firstMeasuredWindowMs =
+    (sampling.warmupWindowCount + 1) * sampling.samplesPerWindow * sampling.intervalMs;
+  return (
+    `The ${phase} phase ended before a measured window completed. ` +
+    `maxDurationMs is ${maxDurationMs} ms, but the sampling settings need about ` +
+    `${firstMeasuredWindowMs} ms to finish the first measured window ` +
+    `((warmupWindowCount + 1) × samplesPerWindow × intervalMs). ` +
+    `Raise maxDurationMs or shorten the sampling settings.`
+  );
 }
 
 function createThroughputWorker(

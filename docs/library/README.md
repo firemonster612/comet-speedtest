@@ -49,9 +49,10 @@ start.
 
 **Building a custom UI.** Read [`core.md`](./core.md) first, especially
 "Listening for events" and "Handling the outcome". Events (`sample`, `window`,
-`latency-sample`, `phase-start`, `phase-complete`) drive a live progress UI, and
-the `RunOutcome` carries the final numbers. Then skim [`config.md`](./config.md)
-for `normalizeConfig` so you know what shape the engine runs.
+`latency-sample`, `phase-start`, `phase-reset`, `phase-complete`) drive a live
+progress UI, and the `RunOutcome` carries the final numbers. Then skim
+[`config.md`](./config.md) for `normalizeConfig` so you know what shape the
+engine runs.
 
 **Accepting config JSON.** Read "Validation vs normalization" and "Loading
 /comet.config.json" in [`config.md`](./config.md). Use `validateConfig` to inspect

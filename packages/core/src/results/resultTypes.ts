@@ -170,7 +170,9 @@ export type SpeedTestErrorCode =
   | "latency-failed"
   | "worker-start-failed"
   | "aborted"
-  | "timeout";
+  | "timeout"
+  /** An untyped failure outside a measured phase (before the first phase, or while finalizing). */
+  | "internal-error";
 
 export interface SpeedTestError {
   code: SpeedTestErrorCode;
@@ -187,6 +189,11 @@ export type SpeedTestEvent =
   | { type: "start"; runId: string; config: NormalizedSpeedTestConfig }
   | { type: "phase-start"; phase: SpeedTestPhase }
   | { type: "sample"; sample: SpeedSample }
+  /**
+   * The phase is starting over (for example after a runtime transport fallback).
+   * Discard every sample, window and loaded-latency sample already emitted for it.
+   */
+  | { type: "phase-reset"; phase: ThroughputPhase; reason: string }
   | { type: "window"; window: SpeedWindow }
   | { type: "latency-sample"; sample: LatencySample }
   | { type: "phase-complete"; phase: SpeedTestPhase; result: PhaseResult }
